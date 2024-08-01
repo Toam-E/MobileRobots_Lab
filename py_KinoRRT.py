@@ -205,6 +205,9 @@ def main():
     kinorrt_planner = KINORRT(env_map=inflated_map, max_step_size=20, max_itr=10000, p_bias=0.05,converter=converter )
     path, path_idx, cost = kinorrt_planner.find_path(start, goal)
     print(f'cost: {cost}')
+    if cost != None:
+        path_meter = np.array(converter.pathindex2pathmeter(path))
+        np.save(f'krrt_path.npy', path_meter)    
     plotter = Plotter(inflated_map=inflated_map)
     plotter.draw_tree(kinorrt_planner.tree, start, goal, path, path_idx)
     
