@@ -1,0 +1,16 @@
+graph G {
+	"[50, 50]"
+	"[160, 99]" [color=lightpink style=filled]
+	"[182, 106]" [color=lightgreen style=filled]
+	"[94, 113]"
+	"[132, 100]" [color=lightpink style=filled]
+	"[200, 200]"
+	"[99, 111]" [color=lightblue style=filled]
+	"[121, 116]" [color=lightpink style=filled]
+	"[99, 111]" -- "[121, 116]" [label=10.0]
+	"[121, 116]" -- "[132, 100]" [label=15.0]
+	"[132, 100]" -- "[160, 99]" [label=8.0]
+	"[160, 99]" -- "[182, 106]" [label=12.0]
+	"[50, 50]" -- "[200, 200]" [label=50.0]
+	"[50, 50]" -- "[94, 113]" [label=30.0]
+}

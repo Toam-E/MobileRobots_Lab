@@ -1,5 +1,9 @@
+#!/usr/bin/python3
+
 from graphviz import Graph
 import json
+import argparse
+
 
 def create_graph(edges_with_costs,node_colors ):
     # Create an undirected graph
@@ -7,7 +11,7 @@ def create_graph(edges_with_costs,node_colors ):
 
     # Add all nodes first to ensure they are defined before adding edges
     nodes = set()
-    for start, end, _, _ in edges_with_costs:
+    for start, end, _ in edges_with_costs:
         nodes.add(start)
         nodes.add(end)
 
@@ -20,29 +24,111 @@ def create_graph(edges_with_costs,node_colors ):
             g.node(node)  # Add node without specific color
 
     # Add edges after nodes are defined
-    for start, end, cost, h in edges_with_costs:
-        g.edge(start, end, label=f"{str(cost)}, {str(h)}, {str(cost+h)}")
+    for start, end, cost in edges_with_costs:
+        g.edge(start, end, label=f"{str(cost)}")
 
     # Save the graph to a PNG file
     g.render('graph')
 
-def main():
-    start = (94, 113)
-    goal = tuple(json.load(open("/Users/toamelharar/Documents/GitHub/MobileRobots_HW2/hw2-wet2/goal.json", "r")))
+def main(_dict=None, json_file=None):
+    if json_file and _dict:
+        print("ERROR - expected one argument")
+        return False
+
+    # Process the arguments
+    if json_file:
+        with open(json_file, 'r') as f:
+            dictionary = json.load(f)
+    else:
+        dictionary = _dict
+
+    start = dictionary['start']
+    goal = dictionary['goal']
+    path_nodes = dictionary['path_list'] #Example: [[94, 113], [99, 111], [121, 116], [132, 100], [160, 99], [182, 106]]
+    path_edges = dictionary['path_edges']
+    #Example: 
+        # [
+        #     [
+        #         "(384, 74)",
+        #         "(363, 70)",
+        #         21.377558326431952
+        #     ],
+        #     [
+        #         "(384, 74)",
+        #         "(390, 74)",
+        #         6.0
+        #     ]
+        # ]
+    
     node_colors = {
         f'{start}': 'lightblue',     # Color for start node
         f'{goal}': 'lightgreen'     # Color for last node
     }
-    path_list = json.load(open('/Users/toamelharar/Documents/GitHub/MobileRobots_HW2/hw2-wet2/path.json', 'r'))
-    print(path_list)
-    for path in path_list:
-        if tuple(path) != start and tuple(path) != goal:
-            node_colors[f"{tuple(path)}"] = 'lightpink'
-    print(node_colors)
-    edges_path = "/Users/toamelharar/Documents/GitHub/MobileRobots_HW2/hw2-wet2/AStar_tree/graph"
-    with open(edges_path, 'r') as f:
-        json_edges = json.load(f)
-    create_graph(json_edges, node_colors)
 
-if __name__ == '__main__':
-    main()
+    for path in path_nodes:
+        if list(path) != start and list(path) != goal:
+            node_colors[f"{list(path)}"] = 'lightpink'
+
+    create_graph(path_edges, node_colors)
+    return True
+
+# if __name__ == '__main__':
+# # Create the parser
+#     parser = argparse.ArgumentParser(description="command-line parser")
+#
+#     # Add arguments to the mutually exclusive group
+#     # group = parser.add_mutually_exclusive_group(required=True)
+#     parser.add_argument('--jsonFile', required=True, type=str, help='The path of the json dict file')
+#     # group.add_argument('--dictionary', type=json.loads, help='A JSON-formatted dictionary string')
+#
+#     # Parse the arguments
+#     args = parser.parse_args()
+#
+#     if args.jsonFile: main(json_file=args.jsonFile)
+#     # main(_dict=args.dictionary)
+
+my_dict = {
+    "start": [99, 111],
+    "goal": [182, 106],
+    "path_list": [
+        [99, 111],
+        [121, 116],
+        [132, 100],
+        [160, 99],
+        [182, 106]
+    ],
+    "path_edges": [
+        [
+            "[99, 111]",
+            "[121, 116]",
+            10.0
+        ],
+        [
+            "[121, 116]",
+            "[132, 100]",
+            15.0
+        ],
+        [
+            "[132, 100]",
+            "[160, 99]",
+            8.0
+        ],
+        [
+            "[160, 99]",
+            "[182, 106]",
+            12.0
+        ],
+        [
+            "[50, 50]",
+            "[200, 200]",
+            50.0
+        ],
+        [
+            "[50, 50]",
+            "[94, 113]",
+            30.0
+        ]
+    ]
+}
+
+main(_dict=my_dict)
