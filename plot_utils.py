@@ -30,7 +30,7 @@ class Plotter():
         plt.scatter(start[0], start[1], s=100, c='g')
         plt.scatter(goal[0],goal[1], s=100, c='r')
         plt.imshow(self.map, origin="lower")
-        plt.pause(2)
+        #plt.pause(2)
  
 
     
