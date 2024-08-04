@@ -162,8 +162,8 @@ class Simulator(object):
             self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
-            plt.axis("equal")
-            plt.grid(True)
+            #plt.axis("equal")
+            #plt.grid(True)
             plt.title("Time[s]:" + str(round(states.t[i], 2))
                     + ", speed[m/s]:" + str(round(states.v[i], 2)))
             plt.pause(0.00001)
