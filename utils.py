@@ -4,6 +4,7 @@ import numpy as np
 import math
 import bisect
 import operator
+import pickle
 
 
 def euler_from_quaternion(quaternion):
@@ -504,6 +505,15 @@ class Tree(object):
         if conf_idx is not None:
             return True
         return False
+
+    def save_tree(self, file_path):
+        with open(file_path, 'wb') as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load_tree(file_path):
+        with open(file_path, 'rb') as f:
+            return pickle.load(f)
 
 
 class RRTVertex(object):
