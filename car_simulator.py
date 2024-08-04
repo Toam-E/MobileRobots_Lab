@@ -1,8 +1,13 @@
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
 import numpy as np
 import car_consts
+from utils import CSpace
 # import  rc_car.scripts.utils.cubic_spline_planner as cubic_spline_planner
+import imageio
+from datetime import datetime
 
 
 MAX_TIME = 500.0  # max simulation time
@@ -63,13 +68,21 @@ class States(object):
         self.rear_x.append(state.rear_x)
         self.rear_y.append(state.rear_y)
 
+    def get_states_in_meters(self, converter:CSpace):
+        states = States()
+        for state in zip(self.x, self.y):
+            state_pixel = converter.meter2pixel([state[0], state[1]])
+            states.x.append(state_pixel[0])
+            states.y.append(state_pixel[1])
+        return states
 
 class Simulator(object):
-    def __init__(self,  trajectory=None ,DT = 0.1):
+    def __init__(self, map,  trajectory=None ,DT = 0.1):
         self.trajectory = trajectory
         self.time = 0.0
         self.dt = DT
-        
+        self.map=map
+
 
     def plot_car(self, x, y, yaw, steer=0.0, cabcolor="-r", truckcolor="-k"):  # pragma: no cover
 
@@ -159,15 +172,80 @@ class Simulator(object):
                 plt.scatter(self.trajectory.cx, self.trajectory.cy, c='cyan')#, "-r", label="course")
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
             plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
-            self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
+            #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
-            #plt.axis("equal")
-            #plt.grid(True)
+            plt.axis("equal")
+            plt.grid(True)
             plt.title("Time[s]:" + str(round(states.t[i], 2))
                     + ", speed[m/s]:" + str(round(states.v[i], 2)))
             plt.pause(0.00001)
-    
+
+    def create_map_visualization(self, ax, map_array):
+        """
+        Visualize the map on the given axis.
+        @param ax The axis to plot on.
+        @param map_array The NumPy array representing the map.
+        """
+        ax.imshow(map_array, origin="lower")
+
+    def create_animation(self, states: States, converter:CSpace, start, goal, closest_path_coords=None):
+         # switch backend - possible bugfix if animation fails
+        #matplotlib.use('TkAgg')
+
+        sim_plan = []
+        traj_meters_cx = []
+        traj_meters_cy = []
+        for traj_point in zip(self.trajectory.cx, self.trajectory.cy):
+            traj_pixel = converter.meter2pixel([traj_point[0], traj_point[1]])
+            traj_meters_cx.append(traj_pixel[0])
+            traj_meters_cy.append(traj_pixel[1])
+
+        for i in range(len(states.x)):
+            print(f"i={i+1}/{len(states.x)}")
+
+            fig, ax = plt.subplots(dpi=300)  # Create a new figure and axis
+            ax.axis('off')
+            self.create_map_visualization(ax, self.map)  # Pass the axis to your visualization function            
+
+            plt.scatter(start[0], start[1], s=100, c='g')
+            plt.scatter(goal[0],goal[1], s=100, c='r')
+
+            # for stopping simulation with the esc key.
+            #plt.gcf().canvas.mpl_connect('key_release_event',
+            #        lambda event: [exit(0) if event.key == 'escape' else None])
+            if self.trajectory is not None:
+                plt.scatter(traj_meters_cx, traj_meters_cy, c='cyan')#, "-r", label="course")
+                # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
+            plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
+            #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
+            #if closest_path_coords is not None:
+            #    plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
+            #plt.axis("equal")
+            #plt.grid(True)
+            ax.grid(False)
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+            #plt.title("Time[s]:" + str(round(states.t[i], 2))
+            #        + ", speed[m/s]:" + str(round(states.v[i], 2)))
+            #plt.pause(0.00001)
+
+
+            # convert plot to image
+            canvas = plt.gca().figure.canvas
+            canvas.draw()
+            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+            data = data.reshape(canvas.get_width_height()[::-1] + (3,))
+            #pic_time = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+            #imageio.imwrite(f"out/{i}_{pic_time}.jpeg", data)
+            sim_plan.append(data)
+
+            # Close the figure to release memory
+            plt.close(fig)
+
+        # store gif
+        plan_time = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+        imageio.mimwrite(f'plan_{plan_time}.gif', sim_plan, 'GIF', duration=0.05, subrectangles=True)
+
     def save_simulation(self):
         pass
     

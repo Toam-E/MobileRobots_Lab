@@ -4,7 +4,7 @@ import numpy as np
 import math
 import bisect
 import operator
-import pickle
+
 
 
 def euler_from_quaternion(quaternion):
@@ -53,7 +53,7 @@ def quaternion_from_euler(roll, pitch, yaw):
 
     return q
 
-
+'''
 class State:
     """
     vehicle state class
@@ -74,8 +74,7 @@ class State:
         self.yaw = yaw
         self.rear_x = x - ((self.WB / 2) * math.cos(yaw))
         self.rear_y = y - ((self.WB / 2) * math.sin(yaw))
-
-
+'''
 
 class Trajectory(object):
     def __init__(self, path ,dl=1.0, TARGET_SPEED=10.0 / 3.6 ):
@@ -169,7 +168,6 @@ class Trajectory(object):
             return mod_angle.item()
         else:
             return mod_angle
-        
 
 
 
@@ -505,7 +503,7 @@ class Tree(object):
         if conf_idx is not None:
             return True
         return False
-
+'''
     def save_tree(self, file_path):
         with open(file_path, 'wb') as f:
             pickle.dump(self, f)
@@ -514,6 +512,7 @@ class Tree(object):
     def load_tree(file_path):
         with open(file_path, 'rb') as f:
             return pickle.load(f)
+'''
 
 
 class RRTVertex(object):
