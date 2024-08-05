@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from utils import Trajectory
+from trajectory import Trajectory
 import car_consts
 import matplotlib.pyplot as plt
 from car_simulator import State, States, Simulator
@@ -75,6 +75,7 @@ class PurePursuit_Controller(object):
                 min_distance = current_dist
                 min_distance_idx = idx
 
+        assert(min_distance_idx != None)
         self.old_nearest_point_index = min_distance_idx
 
         Lf = self.Lfc + self.k * state.v

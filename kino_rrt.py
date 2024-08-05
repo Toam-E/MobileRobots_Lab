@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import Tree,  CSpace, calc_configs_dist
+from utils import Tree,  calc_configs_dist
+from cspace import CSpace
 from odom import Odom
 
 class KINORRT(object):
