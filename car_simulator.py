@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import math
 import numpy as np
 import car_consts
-from utils import CSpace
+from cspace import CSpace
+from trajectory import Trajectory
 # import  rc_car.scripts.utils.cubic_spline_planner as cubic_spline_planner
 import imageio
 from datetime import datetime
@@ -70,10 +71,11 @@ class States(object):
 
     def get_states_in_meters(self, converter:CSpace):
         states = States()
-        for state in zip(self.x, self.y):
-            state_pixel = converter.meter2pixel([state[0], state[1]])
+        for state in zip(self.x, self.y, self.yaw):
+            state_pixel = converter.meter2pixel([state[0], state[1], state[2]])
             states.x.append(state_pixel[0])
             states.y.append(state_pixel[1])
+            states.yaw.append(state_pixel[2])
         return states
 
 class Simulator(object):
@@ -189,17 +191,9 @@ class Simulator(object):
         """
         ax.imshow(map_array, origin="lower")
 
-    def create_animation(self, states: States, converter:CSpace, start, goal, closest_path_coords=None):
-         # switch backend - possible bugfix if animation fails
-        #matplotlib.use('TkAgg')
+    def create_animation(self, states: States, trajectory: Trajectory, start, goal, closest_path_coords=None):
 
         sim_plan = []
-        traj_meters_cx = []
-        traj_meters_cy = []
-        for traj_point in zip(self.trajectory.cx, self.trajectory.cy):
-            traj_pixel = converter.meter2pixel([traj_point[0], traj_point[1]])
-            traj_meters_cx.append(traj_pixel[0])
-            traj_meters_cy.append(traj_pixel[1])
 
         for i in range(len(states.x)):
             print(f"i={i+1}/{len(states.x)}")
@@ -214,13 +208,13 @@ class Simulator(object):
             # for stopping simulation with the esc key.
             #plt.gcf().canvas.mpl_connect('key_release_event',
             #        lambda event: [exit(0) if event.key == 'escape' else None])
-            if self.trajectory is not None:
-                plt.scatter(traj_meters_cx, traj_meters_cy, c='cyan')#, "-r", label="course")
+            if trajectory is not None:
+                plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
             plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
-            #if closest_path_coords is not None:
-            #    plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
+            if closest_path_coords is not None:
+                plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
             #plt.axis("equal")
             #plt.grid(True)
             ax.grid(False)
@@ -244,7 +238,7 @@ class Simulator(object):
 
         # store gif
         plan_time = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        imageio.mimwrite(f'plan_{plan_time}.gif', sim_plan, 'GIF', duration=0.05, subrectangles=True)
+        imageio.mimwrite(f'plan_{plan_time}.gif', sim_plan, 'GIF', fps=30, subrectangles=True)
 
     def save_simulation(self):
         pass

@@ -1,5 +1,5 @@
 import numpy as np
-from utils import CSpace
+from cspace import CSpace
 
 class Odom(object):
     def __init__(self, converter:CSpace):
