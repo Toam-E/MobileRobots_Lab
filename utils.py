@@ -466,4 +466,44 @@ class Ackermann_ARC(object):
         return yaw
 
 
+def inflate_window(map_, offset, size, inflation):#, resolution, distance):
+    cells_as_obstacle = int(inflation) #int(distance/resolution)
+    rows, cols = map_.shape
+    inflated_map = map_.copy()
+    for j in range(offset[1], size[1]):
+        for i in range(offset[0], size[0]):
+            if map_[i,j] != 0:
+                i_min = max(0, i-cells_as_obstacle)
+                i_max = min(rows, i+cells_as_obstacle)
+                j_min = max(0, j-cells_as_obstacle)
+                j_max = min(cols, j+cells_as_obstacle)
+                inflated_map[i_min:i_max, j_min:j_max] = 100
+    return inflated_map
 
+
+def inflate(map_, inflation):
+    map_[95:130, 70] = 100
+    return inflate_window(map_, [0, 0], map_.shape, inflation)
+
+
+def add_new_obs(map, obs1_point_x, obs1_point_y, inflation):
+    cells_as_obstacle = int(inflation)
+    rows, cols = map.shape
+    map[obs1_point_y, obs1_point_x] = 100
+    x_min = max(0, obs1_point_x-cells_as_obstacle)
+    x_max = min(cols, obs1_point_x+cells_as_obstacle)
+    y_min = max(0, obs1_point_y-cells_as_obstacle)
+    y_max = min(rows, obs1_point_y+cells_as_obstacle)
+    map = inflate_window(map, [y_min, x_min], [y_max, x_max], inflation)
+    return map
+
+def add_new_obstacles(old_map, path, path_fractions, inflations):
+    path_length = len(path)
+    new_map = old_map.copy()
+    for idx, path_frac in enumerate(path_fractions):
+        obs_idx = int(path_length * path_frac)
+        obs_point = path[obs_idx]
+        obs_point_x = int(obs_point[0])
+        obs_point_y = int(obs_point[1])
+        new_map = add_new_obs(new_map, obs_point_x, obs_point_y, inflations[idx])
+    return new_map

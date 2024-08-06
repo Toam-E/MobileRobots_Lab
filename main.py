@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from kino_rrt import KINORRT
 from car_simulator import State, States, Simulator
 from pure_pursuit import PurePursuit_Controller
-from plot_utils import Plotter, inflate
+from plot_utils import Plotter, plot_map
+from utils import inflate, add_new_obstacles
 
 #  hyper-parameters
 k = 0.1  # look forward gain
@@ -24,13 +25,15 @@ MAX_ACCEL = 1.0  # maximum accel [m/ss]
 
 # run params
 RUN_KRRT = False
+RUN_ADD_OBS = True
 RUN_PP = True
 
 def main():
 
     map_original = np.array(np.load('maze_test.npy'), dtype=int)
     resolution = 0.05000000074505806
-    inflated_map = inflate(map_original, 0.2/resolution)
+    inflation = 0.2/resolution
+    inflated_map = inflate(map_original, inflation)
     converter = CSpace(resolution, origin_x=-4.73, origin_y=-5.66, map_shape=map_original.shape)
     start = [0.0,0.0]
     start_pixel = converter.meter2pixel(start)
@@ -51,6 +54,17 @@ def main():
         path = np.load('krrt_path_pixels.npy')
         path_meter = np.load('krrt_path_meters.npy')
 
+    if RUN_ADD_OBS:
+        # add on path new obstacles
+        path_fractions = [0.2, 0.4, 0.6, 0.8]
+        inflations = [4, 6, 8, 6]
+        new_obs_map = add_new_obstacles(inflated_map, path, path_fractions, inflations)
+        #plt.imshow(new_obs_map, origin="lower")
+        #plt.show()
+    else:
+        new_obs_map = inflated_map
+
+
     if RUN_PP:
         trajectory = Trajectory(dl=0.1, path=path_meter, TARGET_SPEED=target_speed)
         state = State(x=trajectory.cx[0], y=trajectory.cy[0], yaw=trajectory.cyaw[0], v=0.0)
@@ -60,7 +74,7 @@ def main():
         states.append(clock, state)
         pp = PurePursuit_Controller(trajectory.cx, trajectory.cy, k, Lfc, Kp, WB, MAX_ACCEL, MAX_SPEED, MIN_SPEED, MAX_STEER, MAX_DSTEER)
         target_ind, _, nearest_index = pp.search_target_index(state)
-        simulator = Simulator(inflated_map, trajectory, dt)
+        simulator = Simulator(new_obs_map, trajectory, dt)
         closest_path_coords = []
         closest_path_coords.append([trajectory.cx[0], trajectory.cy[0]])
         while T >= clock and lastIndex > target_ind:
