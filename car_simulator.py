@@ -1,6 +1,7 @@
 import matplotlib
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import math
 import numpy as np
 import car_consts
@@ -195,11 +196,17 @@ class Simulator(object):
 
         sim_plan = []
 
+        lidar_range = 10
+
+
+        limits = self.map.shape
         for i in range(len(states.x)):
             print(f"i={i+1}/{len(states.x)}")
 
             fig, ax = plt.subplots(dpi=300)  # Create a new figure and axis
             ax.axis('off')
+            #ax.set_xlim(limits[1])
+            #ax.set_ylim(limits[0])
             self.create_map_visualization(ax, self.map)  # Pass the axis to your visualization function            
 
             plt.scatter(start[0], start[1], s=100, c='g')
@@ -208,10 +215,13 @@ class Simulator(object):
             # for stopping simulation with the esc key.
             #plt.gcf().canvas.mpl_connect('key_release_event',
             #        lambda event: [exit(0) if event.key == 'escape' else None])
-            if trajectory is not None:
-                plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
+            #if trajectory is not None:
+            #    plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
             plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
+            circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
+            ax.add_patch(circle)
+
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
