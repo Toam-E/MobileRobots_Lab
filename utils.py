@@ -507,3 +507,11 @@ def add_new_obstacles(old_map, path, path_fractions, inflations):
         obs_point_y = int(obs_point[1])
         new_map = add_new_obs(new_map, obs_point_x, obs_point_y, inflations[idx])
     return new_map
+
+def get_normalized_angle(angle):
+    if angle > np.pi:
+        return angle - 2*np.pi
+    elif angle < -np.pi:
+        return angle + 2*np.pi
+    else:
+        return angle

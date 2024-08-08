@@ -5,7 +5,8 @@ import car_consts
 import matplotlib.pyplot as plt
 from kino_rrt import KINORRT
 from car_simulator import State, States, Simulator
-from pure_pursuit import PurePursuit_Controller
+#from pure_pursuit import PurePursuit_Controller
+from local_planner import LocalPlanner
 from plot_utils import Plotter, plot_map
 from utils import inflate, add_new_obstacles
 
@@ -27,6 +28,7 @@ MAX_ACCEL = 1.0  # maximum accel [m/ss]
 RUN_KRRT = False
 RUN_ADD_OBS = True
 RUN_PP = True
+RUN_ANIMATION = True
 
 def main():
 
@@ -72,24 +74,29 @@ def main():
         clock = 0.0
         states = States()
         states.append(clock, state)
-        pp = PurePursuit_Controller(trajectory.cx, trajectory.cy, k, Lfc, Kp, WB, MAX_ACCEL, MAX_SPEED, MIN_SPEED, MAX_STEER, MAX_DSTEER)
-        target_ind, _, nearest_index = pp.search_target_index(state)
+        lp = LocalPlanner(new_obs_map, trajectory.cx, trajectory.cy, k, Lfc, Kp, WB, MAX_ACCEL, MAX_SPEED, MIN_SPEED, MAX_STEER, MAX_DSTEER)
+        target_ind, _, nearest_index = lp.search_target_index(state)
         simulator = Simulator(new_obs_map, trajectory, dt)
         closest_path_coords = []
         closest_path_coords.append([trajectory.cx[0], trajectory.cy[0]])
         while T >= clock and lastIndex > target_ind:
-            state.v = pp.proportional_control_acceleration(target_speed, state.v, dt)
-            delta, target_ind, closest_index = pp.pure_pursuit_steer_control(state, trajectory, dt)
+            state.v = lp.proportional_control_acceleration(target_speed, state.v, dt)
+            delta, target_ind, closest_index = lp.pure_pursuit_steer_control(state, trajectory, dt)
             state.predelta = delta
             state = simulator.update_state(state, delta)  # Control vehicle
             clock += dt
             states.append(clock, state, delta)
             closest_path_coords.append([trajectory.cx[closest_index], trajectory.cy[closest_index]])
-        #simulator.show_simulation(states, closest_path_coords)
-        states_pixels = states.get_states_in_meters(converter)
-        traj_pixels = trajectory.get_trajectory_in_meters(converter)
-        closest_path_coords_pixels = converter.pathmeter2pathindex(closest_path_coords)
-        simulator.create_animation(states_pixels, traj_pixels, start_pixel, goal_pixel, closest_path_coords_pixels)
+
+
+        if RUN_ANIMATION:
+            states_pixels = states.get_states_in_meters(converter)
+            traj_pixels = trajectory.get_trajectory_in_meters(converter)
+            closest_path_coords_pixels = converter.pathmeter2pathindex(closest_path_coords)
+            states_pixels.calc_states_cones()
+
+            #simulator.show_simulation(states, closest_path_coords)
+            simulator.create_animation(states_pixels, traj_pixels, start_pixel, goal_pixel, closest_path_coords_pixels)
 
 if __name__ == '__main__':
     main()

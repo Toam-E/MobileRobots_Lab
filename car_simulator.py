@@ -10,7 +10,7 @@ from trajectory import Trajectory
 # import  rc_car.scripts.utils.cubic_spline_planner as cubic_spline_planner
 import imageio
 from datetime import datetime
-
+from utils import get_normalized_angle
 
 MAX_TIME = 500.0  # max simulation time
 TARGET_SPEED = 10.0 / 3.6  # [m/s] target speed
@@ -58,6 +58,8 @@ class States(object):
         self.a = []
         self.rear_x = []
         self.rear_y = []
+        self.cones_x = []
+        self.cones_y = []
 
     def append(self, t, state: State,a=0, delta=0 ):
         self.x.append(state.x)
@@ -78,6 +80,28 @@ class States(object):
             states.y.append(state_pixel[1])
             states.yaw.append(state_pixel[2])
         return states
+    
+    def calc_states_cones(self, cone_radius = 15, cone_fov=np.pi/3):
+        # add "visibility cone" to demonstrate what the car sees
+
+        # compute a pixeled arc for the cone
+        for idx, _ in enumerate(self.x):
+            cone_origin_x = self.x[idx]
+            cone_origin_y = self.y[idx]
+            cone_origin_yaw = self.yaw[idx]
+            fov_angles = np.linspace(start=cone_fov/2, stop=-cone_fov/2, num=cone_radius)
+            tile_yaw = np.tile(cone_origin_yaw, fov_angles.size)
+            fov_angles = np.expand_dims(tile_yaw + fov_angles, axis=0)
+            car_angles = np.apply_along_axis(get_normalized_angle, 0, fov_angles)
+            car_cone_xs = cone_origin_x + cone_radius * np.cos(car_angles)
+            car_cone_ys = cone_origin_y + cone_radius * np.sin(car_angles)
+
+            car_cone_xs = np.append(np.insert(car_cone_xs, 0, cone_origin_x), cone_origin_x)
+            car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
+
+            self.cones_x.append(car_cone_xs)
+            self.cones_y.append(car_cone_ys)
+        return
 
 class Simulator(object):
     def __init__(self, map,  trajectory=None ,DT = 0.1):
@@ -190,7 +214,6 @@ class Simulator(object):
         @param ax The axis to plot on.
         @param map_array The NumPy array representing the map.
         """
-        ax.imshow(map_array, origin="lower")
 
     def create_animation(self, states: States, trajectory: Trajectory, start, goal, closest_path_coords=None):
 
@@ -205,9 +228,9 @@ class Simulator(object):
 
             fig, ax = plt.subplots(dpi=300)  # Create a new figure and axis
             ax.axis('off')
+            ax.imshow(self.map, origin="lower")
             #ax.set_xlim(limits[1])
             #ax.set_ylim(limits[0])
-            self.create_map_visualization(ax, self.map)  # Pass the axis to your visualization function            
 
             plt.scatter(start[0], start[1], s=100, c='g')
             plt.scatter(goal[0],goal[1], s=100, c='r')
@@ -219,12 +242,15 @@ class Simulator(object):
             #    plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
             plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
-            circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
-            ax.add_patch(circle)
+            #circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
+            #ax.add_patch(circle)
 
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
+            
+            plt.fill(states.cones_x[i], states.cones_y[i], "mediumpurple", zorder=13, alpha=0.5)
+
             #plt.axis("equal")
             #plt.grid(True)
             ax.grid(False)
