@@ -45,6 +45,7 @@ class State:
         self.rear_x = self.x - ((WB / 2) * math.cos(self.yaw))
         self.rear_y = self.y - ((WB / 2) * math.sin(self.yaw))
         self.predelta = 0.0
+        self.in_future_collision = False
     
 
 class States(object):
@@ -60,6 +61,7 @@ class States(object):
         self.rear_y = []
         self.cones_x = []
         self.cones_y = []
+        self.is_in_future_collision = []
 
     def append(self, t, state: State,a=0, delta=0 ):
         self.x.append(state.x)
@@ -71,14 +73,16 @@ class States(object):
         self.a.append(a)
         self.rear_x.append(state.rear_x)
         self.rear_y.append(state.rear_y)
+        self.is_in_future_collision.append(state.in_future_collision)
 
-    def get_states_in_meters(self, converter:CSpace):
+    def get_states_in_pixels(self, converter:CSpace):
         states = States()
-        for state in zip(self.x, self.y, self.yaw):
+        for state in zip(self.x, self.y, self.yaw, self.is_in_future_collision):
             state_pixel = converter.meter2pixel([state[0], state[1], state[2]])
             states.x.append(state_pixel[0])
             states.y.append(state_pixel[1])
             states.yaw.append(state_pixel[2])
+            states.is_in_future_collision.append(state[3])
         return states
     
     def calc_states_cones(self, cone_radius = 15, cone_fov=np.pi/3):
@@ -249,7 +253,11 @@ class Simulator(object):
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
             
-            plt.fill(states.cones_x[i], states.cones_y[i], "mediumpurple", zorder=13, alpha=0.5)
+            if states.is_in_future_collision[i]:
+                cone_color = "red"
+            else:
+                cone_color = "mediumpurple"
+            plt.fill(states.cones_x[i], states.cones_y[i], cone_color, zorder=13, alpha=0.5)
 
             #plt.axis("equal")
             #plt.grid(True)

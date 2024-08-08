@@ -11,11 +11,11 @@ from plot_utils import Plotter, plot_map
 from utils import inflate, add_new_obstacles
 
 #  hyper-parameters
-k = 0.1  # look forward gain
-Lfc = 1.0  # [m] look-ahead distance
-Kp = 1.0  # speed proportional gain
-dt = 0.1  # [s] time tick
-target_speed = 1.0  # [m/s]
+LF_K = 0.1  # look forward gain
+LFC = 1.0  # [m] look-ahead distance
+V_KP = 1.0  # speed proportional gain
+DELTA_T = 0.1  # [s] time tick
+TARGETED_SPEED = 1.0  # [m/s]
 T = 100.0  # max simulation time
 WB = car_consts.wheelbase 
 MAX_STEER = car_consts.max_steering_angle_rad  # maximum steering angle [rad]
@@ -68,30 +68,35 @@ def main():
 
 
     if RUN_PP:
-        trajectory = Trajectory(dl=0.1, path=path_meter, TARGET_SPEED=target_speed)
+        trajectory = Trajectory(dl=0.1, path=path_meter, TARGET_SPEED=TARGETED_SPEED)
         state = State(x=trajectory.cx[0], y=trajectory.cy[0], yaw=trajectory.cyaw[0], v=0.0)
         lastIndex = len(trajectory.cx) - 1
         clock = 0.0
         states = States()
         states.append(clock, state)
-        lp = LocalPlanner(new_obs_map, trajectory.cx, trajectory.cy, k, Lfc, Kp, WB, MAX_ACCEL, MAX_SPEED, MIN_SPEED, MAX_STEER, MAX_DSTEER)
+        lp = LocalPlanner(converter, new_obs_map, trajectory.cx, trajectory.cy,\
+                          LF_K, LFC, V_KP, WB, MAX_ACCEL, MAX_SPEED,\
+                          MIN_SPEED, MAX_STEER, MAX_DSTEER)
         target_ind, _, nearest_index = lp.search_target_index(state)
-        simulator = Simulator(new_obs_map, trajectory, dt)
+        simulator = Simulator(new_obs_map, trajectory, DELTA_T)
         closest_path_coords = []
         closest_path_coords.append([trajectory.cx[0], trajectory.cy[0]])
         while T >= clock and lastIndex > target_ind:
-            state.v = lp.proportional_control_acceleration(target_speed, state.v, dt)
-            delta, target_ind, closest_index = lp.pure_pursuit_steer_control(state, trajectory, dt)
+            if lp.local_obs_detected(state, cone_radius=10, cone_fov=np.pi/3):
+                # run KRRT locally and find a new route
+                pass
+
+            state.v = lp.proportional_control_acceleration(TARGETED_SPEED, state.v, DELTA_T)
+            delta, target_ind, closest_index = lp.pure_pursuit_steer_control(state, trajectory, DELTA_T)
             state.predelta = delta
             state = simulator.update_state(state, delta)  # Control vehicle
-            clock += dt
+            clock += DELTA_T
             states.append(clock, state, delta)
             closest_path_coords.append([trajectory.cx[closest_index], trajectory.cy[closest_index]])
 
-
         if RUN_ANIMATION:
-            states_pixels = states.get_states_in_meters(converter)
-            traj_pixels = trajectory.get_trajectory_in_meters(converter)
+            states_pixels = states.get_states_in_pixels(converter)
+            traj_pixels = trajectory.get_trajectory_in_pixels(converter)
             closest_path_coords_pixels = converter.pathmeter2pathindex(closest_path_coords)
             states_pixels.calc_states_cones()
 

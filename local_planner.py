@@ -3,12 +3,20 @@ import math
 from trajectory import Trajectory
 import matplotlib.pyplot as plt
 from car_simulator import State, States
+from utils import get_normalized_angle
+from kino_rrt import KINORRT
+from cspace import CSpace
 
 
 
 class LocalPlanner(object):
-    def __init__(self, map, cx, cy, k=0.1, Lfc=0.5, Kp =1.0, WB =0.335, MAX_ACCEL=1.0, MAX_SPEED=3, MIN_SPEED=-3, MAX_STEER=np.deg2rad(27.0), MAX_DSTEER=np.deg2rad(150.0) ):
+    def __init__(self, converter: CSpace, map, cx, cy,\
+                 k=0.1, Lfc=0.5, Kp =1.0, WB =0.335,\
+                 MAX_ACCEL=1.0, MAX_SPEED=3, MIN_SPEED=-3,\
+                 MAX_STEER=np.deg2rad(27.0), MAX_DSTEER=np.deg2rad(150.0) ):
+        self.converter = converter
         self.map = map
+        self.krrt = KINORRT(env_map=map, max_step_size=20, max_itr=100, p_bias=0.1,converter=converter)
         self.k = k  # look forward gain
         self.Lfc = Lfc   # [m] look-ahead distance
         self.Kp = Kp  # speed proportional gain
@@ -95,6 +103,27 @@ class LocalPlanner(object):
         '''
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
+    def local_obs_detected(self, state: State, cone_radius = 15, cone_fov=np.pi/3):
+        state_meter_list = [state.x, state.y, state.yaw]
+        state_pixel = self.converter.meter2pixel(state_meter_list)
+        cone_origin_x = state_pixel[0]
+        cone_origin_y = state_pixel[1]
+        cone_origin_yaw = state_pixel[2]
+        fov_angles = np.linspace(start=cone_fov/2, stop=-cone_fov/2, num=cone_radius)
+        tile_yaw = np.tile(cone_origin_yaw, fov_angles.size)
+        fov_angles = np.expand_dims(tile_yaw + fov_angles, axis=0)
+        car_angles = np.apply_along_axis(get_normalized_angle, 0, fov_angles)
+        car_cone_xs = cone_origin_x + cone_radius * np.cos(car_angles)
+        car_cone_ys = cone_origin_y + cone_radius * np.sin(car_angles)
+        # check if cone border is in collision
+        cone_points = [list(car_cone_point) for car_cone_point in zip(car_cone_xs.flatten(), car_cone_ys.flatten())]
+        in_collision = False
+        for cone_point in cone_points:
+            if self.krrt.is_in_collision(cone_point):
+                in_collision = True
+                break
+        state.in_future_collision = in_collision
+        return in_collision
 
 def plot_error(closest_path_coords, states:States, trajectory:Trajectory):
     fig = plt.figure()
