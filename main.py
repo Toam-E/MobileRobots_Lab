@@ -1,10 +1,11 @@
 import numpy as np
+import copy
 from trajectory import Trajectory
 from cspace import CSpace
 import car_consts
 import matplotlib.pyplot as plt
 from kino_rrt import KINORRT
-from car_simulator import State, States, Simulator
+from car_simulator import SimState, SimStatesContainer, Simulator
 #from pure_pursuit import PurePursuit_Controller
 from local_planner import LocalPlanner
 from plot_utils import Plotter, plot_map
@@ -69,11 +70,12 @@ def main():
 
     if RUN_PP:
         trajectory = Trajectory(dl=0.1, path=path_meter, TARGET_SPEED=TARGETED_SPEED)
-        state = State(x=trajectory.cx[0], y=trajectory.cy[0], yaw=trajectory.cyaw[0], v=0.0)
+        state = SimState(x=trajectory.cx[0], y=trajectory.cy[0], yaw=trajectory.cyaw[0], v=0.0)
         lastIndex = len(trajectory.cx) - 1
         clock = 0.0
-        states = States()
-        states.append(clock, state)
+        states = SimStatesContainer()
+        state.t = clock
+        states.append(state)
         lp = LocalPlanner(converter, new_obs_map, trajectory.cx, trajectory.cy,\
                           LF_K, LFC, V_KP, WB, MAX_ACCEL, MAX_SPEED,\
                           MIN_SPEED, MAX_STEER, MAX_DSTEER)
@@ -82,6 +84,7 @@ def main():
         closest_path_coords = []
         closest_path_coords.append([trajectory.cx[0], trajectory.cy[0]])
         while T >= clock and lastIndex > target_ind:
+            state = copy.copy(state)
             if lp.local_obs_detected(state, cone_radius=10, cone_fov=np.pi/3):
                 # run KRRT locally and find a new route
                 pass
@@ -91,7 +94,9 @@ def main():
             state.predelta = delta
             state = simulator.update_state(state, delta)  # Control vehicle
             clock += DELTA_T
-            states.append(clock, state, delta)
+            state.t = clock
+            state.a = delta
+            states.append(state)
             closest_path_coords.append([trajectory.cx[closest_index], trajectory.cy[closest_index]])
 
         if RUN_ANIMATION:

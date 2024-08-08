@@ -2,7 +2,7 @@ import numpy as np
 import math
 from trajectory import Trajectory
 import matplotlib.pyplot as plt
-from car_simulator import State, States
+from car_simulator import SimState, SimStatesContainer
 from utils import get_normalized_angle
 from kino_rrt import KINORRT
 from cspace import CSpace
@@ -30,7 +30,7 @@ class LocalPlanner(object):
         self.MAX_STEER = MAX_STEER
         self.MAX_DSTEER = MAX_DSTEER
 
-    def pure_pursuit_steer_control(self, state: State, trajectory: Trajectory,  dt):
+    def pure_pursuit_steer_control(self, state: SimState, trajectory: Trajectory,  dt):
         '''
         input: 
         current state,
@@ -66,7 +66,7 @@ class LocalPlanner(object):
         return linear_velocity
         
 
-    def search_target_index(self, state: State):
+    def search_target_index(self, state: SimState):
         '''
         input: current state
         output:
@@ -103,7 +103,7 @@ class LocalPlanner(object):
         '''
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
-    def local_obs_detected(self, state: State, cone_radius = 15, cone_fov=np.pi/3):
+    def local_obs_detected(self, state: SimState, cone_radius = 15, cone_fov=np.pi/3):
         state_meter_list = [state.x, state.y, state.yaw]
         state_pixel = self.converter.meter2pixel(state_meter_list)
         cone_origin_x = state_pixel[0]
@@ -122,10 +122,10 @@ class LocalPlanner(object):
             if self.krrt.is_in_collision(cone_point):
                 in_collision = True
                 break
-        state.in_future_collision = in_collision
+        state.obs_ahead = in_collision
         return in_collision
 
-def plot_error(closest_path_coords, states:States, trajectory:Trajectory):
+def plot_error(closest_path_coords, states:SimStatesContainer, trajectory:Trajectory):
     fig = plt.figure()
     ax = fig.add_subplot()
     total_tracking_error = 0
