@@ -10,7 +10,7 @@ from trajectory import Trajectory
 # import  rc_car.scripts.utils.cubic_spline_planner as cubic_spline_planner
 import imageio
 from datetime import datetime
-
+from utils import get_normalized_angle
 
 MAX_TIME = 500.0  # max simulation time
 TARGET_SPEED = 10.0 / 3.6  # [m/s] target speed
@@ -31,8 +31,6 @@ MAX_SPEED = car_consts.max_linear_velocity  # maximum speed [m/s]
 MIN_SPEED = car_consts.min_linear_velocity  # minimum speed [m/s]
 MAX_ACCEL = 1.0  # maximum accel [m/ss]
 
-show_animation = True
-
 class State:
     """
     vehicle state class
@@ -45,39 +43,72 @@ class State:
         self.rear_x = self.x - ((WB / 2) * math.cos(self.yaw))
         self.rear_y = self.y - ((WB / 2) * math.sin(self.yaw))
         self.predelta = 0.0
-    
 
-class States(object):
+class SimState(State):
+    """
+    Simulation state class
+    """
+    def __init__(self, x=0.0, y=0.0, yaw=0.0, v=0.0):
+        super().__init__(x, y, yaw, v)
+        self.t = None
+        self.d = None
+        self.a = None
+        self.cone = None
+        self.obs_ahead = None
+
+class SimStatesContainer(object):
     def __init__(self):
-        self.x = []
-        self.y = []
-        self.yaw = []
-        self.v = []
-        self.t = []
-        self.d = []
-        self.a = []
-        self.rear_x = []
-        self.rear_y = []
+        self.states = []
+        self.index = 0
 
-    def append(self, t, state: State,a=0, delta=0 ):
-        self.x.append(state.x)
-        self.y.append(state.y)
-        self.yaw.append(state.yaw)
-        self.v.append(state.v)
-        self.t.append(t)
-        self.d.append(delta)
-        self.a.append(a)
-        self.rear_x.append(state.rear_x)
-        self.rear_y.append(state.rear_y)
+    def __iter__(self):
+        self.index = 0
+        return self
 
-    def get_states_in_meters(self, converter:CSpace):
-        states = States()
-        for state in zip(self.x, self.y, self.yaw):
-            state_pixel = converter.meter2pixel([state[0], state[1], state[2]])
-            states.x.append(state_pixel[0])
-            states.y.append(state_pixel[1])
-            states.yaw.append(state_pixel[2])
+    def __next__(self):
+        if self.index < len(self.states):
+            result = self.states[self.index]
+            self.index += 1
+            return result
+        else:
+            raise StopIteration        
+
+    def __len__(self):
+        return len(self.states)
+    
+    def append(self, state: SimState):
+        self.states.append(state)
+
+    def get_states_in_pixels(self, converter:CSpace):
+        states = SimStatesContainer()
+        for idx, state in enumerate(self.states):
+            state_pixel_list = converter.meter2pixel([state.x, state.y, state.yaw])
+            state_pixel = SimState(x=state_pixel_list[0], y=state_pixel_list[1],\
+                                yaw=state_pixel_list[2], v=state.v)
+            state_pixel.obs_ahead = state.obs_ahead
+            states.append(state_pixel)
         return states
+    
+    def calc_states_cones(self, cone_radius = 15, cone_fov=np.pi/3):
+        # add "visibility cone" to demonstrate what the car sees
+
+        # compute a pixeled arc for the cone
+        for state in self.states:
+            cone_origin_x = state.x
+            cone_origin_y = state.y
+            cone_origin_yaw = state.yaw
+            fov_angles = np.linspace(start=cone_fov/2, stop=-cone_fov/2, num=cone_radius)
+            tile_yaw = np.tile(cone_origin_yaw, fov_angles.size)
+            fov_angles = np.expand_dims(tile_yaw + fov_angles, axis=0)
+            car_angles = np.apply_along_axis(get_normalized_angle, 0, fov_angles)
+            car_cone_xs = cone_origin_x + cone_radius * np.cos(car_angles)
+            car_cone_ys = cone_origin_y + cone_radius * np.sin(car_angles)
+
+            car_cone_xs = np.append(np.insert(car_cone_xs, 0, cone_origin_x), cone_origin_x)
+            car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
+
+            state.cone = [car_cone_xs, car_cone_ys]
+        return
 
 class Simulator(object):
     def __init__(self, map,  trajectory=None ,DT = 0.1):
@@ -85,7 +116,6 @@ class Simulator(object):
         self.time = 0.0
         self.dt = DT
         self.map=map
-
 
     def plot_car(self, x, y, yaw, steer=0.0, cabcolor="-r", truckcolor="-k"):  # pragma: no cover
 
@@ -135,7 +165,7 @@ class Simulator(object):
         plt.plot(x, y, "*")
 
 
-    def update_state(self, state: State, delta):
+    def update_state(self, state: SimState, delta):
         if delta >= MAX_STEER:
             delta = MAX_STEER
         elif delta <= -MAX_STEER:
@@ -165,7 +195,7 @@ class Simulator(object):
         return yaw
     
 
-    def show_simulation(self, states: States, closest_path_coords=None):
+    def show_simulation(self, states: SimStatesContainer, closest_path_coords=None):
         for i in range(len(states.x)-1):
             plt.cla()
             # for stopping simulation with the esc key.
@@ -184,30 +214,22 @@ class Simulator(object):
                     + ", speed[m/s]:" + str(round(states.v[i], 2)))
             plt.pause(0.00001)
 
-    def create_map_visualization(self, ax, map_array):
-        """
-        Visualize the map on the given axis.
-        @param ax The axis to plot on.
-        @param map_array The NumPy array representing the map.
-        """
-        ax.imshow(map_array, origin="lower")
-
-    def create_animation(self, states: States, trajectory: Trajectory, start, goal, closest_path_coords=None):
+    def create_animation(self, states: SimStatesContainer, trajectory: Trajectory, start, goal, closest_path_coords=None):
 
         sim_plan = []
 
-        lidar_range = 10
+        states_x = [ state.x for state in states]
+        states_y = [ state.y for state in states]
+        states_cone = [ state.cone for state in states]
+        states_obs_ahead = [ state.obs_ahead for state in states]
 
-
-        limits = self.map.shape
-        for i in range(len(states.x)):
-            print(f"i={i+1}/{len(states.x)}")
+        num_of_states = len(states) 
+        for i in range(num_of_states):
+            print(f"i={i+1}/{num_of_states}")
 
             fig, ax = plt.subplots(dpi=300)  # Create a new figure and axis
             ax.axis('off')
-            #ax.set_xlim(limits[1])
-            #ax.set_ylim(limits[0])
-            self.create_map_visualization(ax, self.map)  # Pass the axis to your visualization function            
+            ax.imshow(self.map, origin="lower")
 
             plt.scatter(start[0], start[1], s=100, c='g')
             plt.scatter(goal[0],goal[1], s=100, c='r')
@@ -215,18 +237,25 @@ class Simulator(object):
             # for stopping simulation with the esc key.
             #plt.gcf().canvas.mpl_connect('key_release_event',
             #        lambda event: [exit(0) if event.key == 'escape' else None])
-            #if trajectory is not None:
+            if trajectory is not None:
+                plt.plot(trajectory.cx, trajectory.cy, label="trajectory", linewidth=2, color='cyan')
             #    plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
-            plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
-            circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
-            ax.add_patch(circle)
+            plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='green')
+            #circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
+            #ax.add_patch(circle)
 
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
-            #plt.axis("equal")
-            #plt.grid(True)
+
+            if states_obs_ahead[i] is not None:
+                if states_obs_ahead[i]:
+                    cone_color = "red"
+                else:
+                    cone_color = "mediumpurple"
+                plt.fill(states_cone[i][0], states_cone[i][1], cone_color, zorder=13, alpha=0.5)
+
             ax.grid(False)
             plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
             #plt.title("Time[s]:" + str(round(states.t[i], 2))

@@ -98,7 +98,7 @@ class Trajectory(object):
         else:
             return mod_angle
 
-    def get_trajectory_in_meters(self, converter:CSpace):
+    def get_trajectory_in_pixels(self, converter:CSpace):
         traj = Trajectory(self.path, self.dl, self.target_speed)
         traj.cx = []
         traj.cy = []
