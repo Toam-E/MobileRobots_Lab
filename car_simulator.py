@@ -107,7 +107,7 @@ class SimStatesContainer(object):
             car_cone_xs = np.append(np.insert(car_cone_xs, 0, cone_origin_x), cone_origin_x)
             car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
 
-            state.cone = [list(pair) for pair in zip(car_cone_xs, car_cone_ys)]
+            state.cone = [car_cone_xs, car_cone_ys]
         return
 
 class Simulator(object):
@@ -237,10 +237,11 @@ class Simulator(object):
             # for stopping simulation with the esc key.
             #plt.gcf().canvas.mpl_connect('key_release_event',
             #        lambda event: [exit(0) if event.key == 'escape' else None])
-            #if trajectory is not None:
+            if trajectory is not None:
+                plt.plot(trajectory.cx, trajectory.cy, label="trajectory", linewidth=2, color='cyan')
             #    plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
-            plt.plot(states_x[:i], states_y[:i], label="trajectory", linewidth=2, color='green')
+            plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='green')
             #circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
             #ax.add_patch(circle)
 
@@ -248,7 +249,7 @@ class Simulator(object):
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
 
-            if False:#states_obs_ahead[i] is not None:
+            if states_obs_ahead[i] is not None:
                 if states_obs_ahead[i]:
                     cone_color = "red"
                 else:
