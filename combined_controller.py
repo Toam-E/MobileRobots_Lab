@@ -84,7 +84,7 @@ class CombinedController(object):
         optional_trajectories = []
 
         # run KRRT locally and find new optional trajectories
-        krrt_start = (self.state.x, self.state.y)
+        krrt_start = self.converter.meter2pixel((self.state.x, self.state.y, self.state.yaw))
         for i in range(KINORRT_TRIES):
             self.krrt.reset()
             curr_trajectory, _, curr_cost = self.krrt._find_path(krrt_start, goal_pixel)
