@@ -17,14 +17,18 @@ class KINORRT(object):
         self.ackerman = Odom(converter)
         self.goal_radius = 4
 
-    def find_path(self, start, goal):
+    def reset(self):
+        self.tree.edges = dict()
+        self.tree.vertices = dict()
+
+    def _find_path(self, start_pixel, goal_pixel):
         itr = 0
-        self.tree.AddVertex(start)
+        self.tree.AddVertex(start_pixel)
 
         while itr < self.max_itr:
             
             # sample random vertex
-            x_random = self.sample(goal)
+            x_random = self.sample(goal_pixel)
 
             # find nearest neighbor
             x_near_idx, x_near = self.tree.GetNearestVertex(x_random)
@@ -41,12 +45,52 @@ class KINORRT(object):
                 self.tree.AddEdge(sid=x_near_idx, eid=x_new_idx, arc_cost=edge_cost)
                 self.tree.vertices[x_new_idx].set_waypoints(edge)
 
-                if calc_configs_dist(goal, x_new) < self.goal_radius:
+                if calc_configs_dist(goal_pixel, x_new) < self.goal_radius:
                     return self.get_shortest_path(x_new_idx)
 
             itr += 1
-            if itr%1000 ==0:
+            if itr%49 == 0:
                 print(f'itr: {itr}')
+        x_near_idx, x_near = self.tree.GetNearestVertex(goal_pixel)
+        # while (not self.tree.isConfExists(x_near)):
+            # x_near_idx, x_near = self.tree.GetNearestVertex(x_near)
+        return self.get_shortest_path(x_near_idx)
+        # return None, None, None
+            
+
+    def find_path(self, start, goal):
+        # itr = 0
+        # self.tree.AddVertex(start)
+
+        # while itr < self.max_itr:
+            
+        #     # sample random vertex
+        #     x_random = self.sample(goal)
+
+        #     # find nearest neighbor
+        #     x_near_idx, x_near = self.tree.GetNearestVertex(x_random)
+            
+        #     # sample random control command
+        #     delta_time, steering, velocity = self.ackerman.sample_control_command()
+            
+        #     # propagate
+        #     x_new, edge, edge_cost = self.ackerman.propagate(steering, velocity ,delta_time, x_near)
+            
+        #     # add vertex and edge
+        #     if self.local_planner(edge):
+        #         x_new_idx = self.tree.AddVertex(x_new)
+        #         self.tree.AddEdge(sid=x_near_idx, eid=x_new_idx, arc_cost=edge_cost)
+        #         self.tree.vertices[x_new_idx].set_waypoints(edge)
+
+        #         if calc_configs_dist(goal, x_new) < self.goal_radius:
+        #             return self.get_shortest_path(x_new_idx)
+
+        #     itr += 1
+        #     if itr%1000 ==0:
+        #         print(f'itr: {itr}')
+        path, path_idx, cost = self._find_path(start, goal)
+        if path[-1] == goal:
+            return path, path_idx, cost
         return None, None, None
     
     def sample(self, goal):

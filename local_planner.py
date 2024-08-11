@@ -66,6 +66,37 @@ class LocalPlanner(object):
         return linear_velocity
         
 
+    # def search_target_index(self, state: SimState):
+    #     '''
+    #     input: current state
+    #     output:
+    #     target index, 
+    #     updated look-ahead distance,
+    #     index of closest coords on trajectory 
+    #     '''
+    #     min_distance = math.inf
+    #     min_distance_idx = None
+    #     for idx, _ in enumerate(self.cx):
+    #         current_dist = \
+    #             self.calc_distance(state.rear_x, state.rear_y, self.cx[idx], self.cy[idx])
+    #         if current_dist < min_distance:
+    #             min_distance = current_dist
+    #             min_distance_idx = idx
+
+    #     assert(min_distance_idx != None)
+    #     self.old_nearest_point_index = min_distance_idx
+
+    #     Lf = self.Lfc + self.k * state.v
+
+    #     ind = self.old_nearest_point_index
+    #     while (ind+1) < len(self.cx):
+    #         dist = self.calc_distance(state.rear_x, state.rear_y, self.cx[ind], self.cy[ind])
+    #         if dist >= Lf:
+    #             break
+    #         ind += 1
+
+    #     return ind, Lf, self.old_nearest_point_index
+
     def search_target_index(self, state: SimState):
         '''
         input: current state
@@ -74,28 +105,37 @@ class LocalPlanner(object):
         updated look-ahead distance,
         index of closest coords on trajectory 
         '''
-        min_distance = math.inf
-        min_distance_idx = None
-        for idx, _ in enumerate(self.cx):
-            current_dist = \
-                self.calc_distance(state.rear_x, state.rear_y, self.cx[idx], self.cy[idx])
-            if current_dist < min_distance:
-                min_distance = current_dist
-                min_distance_idx = idx
+        look_ahead_distance = self.Lfc + self.k * state.v * 0.5
 
-        assert(min_distance_idx != None)
-        self.old_nearest_point_index = min_distance_idx
+        if self.old_nearest_point_index is None:
+            distances = [self.calc_distance(state.x, state.y, x, y) for x,y in zip(self.cx, self.cy)]
+            self.old_nearest_point_index = np.argmin(distances)
+            target_index = self.old_nearest_point_index
+        
+        else:
+            target_index = self.old_nearest_point_index
+            curr_distance = self.calc_distance(state.x, state.y, self.cx[target_index], self.cy[target_index])
 
-        Lf = self.Lfc + self.k * state.v
+            while target_index < len(self.cx) - 1:
+                temp_distances = [self.calc_distance(state.x, state.y, self.cx[target_index + i], self.cy[target_index + i]) for i in range(1, math.ceil(look_ahead_distance)+1)]
+                temp_distance = min(temp_distances)
+                temp_min_index = np.argmin(temp_distance)
+                
+                if temp_distance >= curr_distance: break
+                curr_distance = temp_distance
 
-        ind = self.old_nearest_point_index
-        while (ind+1) < len(self.cx):
-            dist = self.calc_distance(state.rear_x, state.rear_y, self.cx[ind], self.cy[ind])
-            if dist >= Lf:
-                break
-            ind += 1
+                target_index = target_index + temp_min_index + 1
 
-        return ind, Lf, self.old_nearest_point_index
+            self.old_nearest_point_index = target_index
+        
+
+        while target_index < len(self.cx) - 1:
+            temp_distance =  self.calc_distance(state.x, state.y, self.cx[target_index + 1], self.cy[target_index + 1])
+            if look_ahead_distance < temp_distance: break
+            target_index += 1
+
+        return target_index, look_ahead_distance, self.old_nearest_point_index
+    
 
     def calc_distance(self, rear_x, rear_y, point_x, point_y):
         '''
