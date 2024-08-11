@@ -6,6 +6,7 @@ from car_simulator import SimState, SimStatesContainer
 from utils import get_normalized_angle
 from kino_rrt import KINORRT
 from cspace import CSpace
+from geo_utils import *
 
 
 
@@ -16,7 +17,7 @@ class LocalPlanner(object):
                  MAX_STEER=np.deg2rad(27.0), MAX_DSTEER=np.deg2rad(150.0) ):
         self.converter = converter
         self.map = map
-        self.krrt = KINORRT(env_map=map, max_step_size=20, max_itr=100, p_bias=0.1,converter=converter)
+        #self.krrt = KINORRT(env_map=map, max_step_size=20, max_itr=100, p_bias=0.1,converter=converter)
         self.k = k  # look forward gain
         self.Lfc = Lfc   # [m] look-ahead distance
         self.Kp = Kp  # speed proportional gain
@@ -103,6 +104,7 @@ class LocalPlanner(object):
         '''
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
+
     def local_obs_detected(self, state: SimState, cone_radius = 15, cone_fov=np.pi/3):
         state_meter_list = [state.x, state.y, state.yaw]
         state_pixel = self.converter.meter2pixel(state_meter_list)
@@ -115,15 +117,17 @@ class LocalPlanner(object):
         car_angles = np.apply_along_axis(get_normalized_angle, 0, fov_angles)
         car_cone_xs = cone_origin_x + cone_radius * np.cos(car_angles)
         car_cone_ys = cone_origin_y + cone_radius * np.sin(car_angles)
-        # check if cone border is in collision
+        car_cone_xs = np.append(np.insert(car_cone_xs, 0, cone_origin_x), cone_origin_x)
+        car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
+        # check if cone is in collision
         cone_points = [list(car_cone_point) for car_cone_point in zip(car_cone_xs.flatten(), car_cone_ys.flatten())]
-        in_collision = False
-        for cone_point in cone_points:
-            if self.krrt.is_in_collision(cone_point):
-                in_collision = True
-                break
-        state.obs_ahead = in_collision
-        return in_collision
+        min_x, min_y, max_x, max_y = calculate_bounding_box(cone_points)
+        min_x, min_y, max_x, max_y = clip_bounding_box(min_x, min_y, max_x, max_y, self.map.shape)
+        roi = extract_roi(self.map, min_x, min_y, max_x, max_y)
+        adjusted_polygon = adjust_polygon_to_roi(cone_points, min_x, min_y)
+        intersects = check_polygon_intersection(roi, adjusted_polygon)
+        state.obs_ahead = intersects
+        return intersects
 
 def plot_error(closest_path_coords, states:SimStatesContainer, trajectory:Trajectory):
     fig = plt.figure()

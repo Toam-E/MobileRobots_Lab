@@ -24,6 +24,8 @@ MAX_DSTEER = car_consts.max_dt_steering_angle  # maximum steering speed [rad/s]
 MAX_SPEED = car_consts.max_linear_velocity  # maximum speed [m/s]
 MIN_SPEED = car_consts.min_linear_velocity  # minimum speed [m/s]
 MAX_ACCEL = 1.0  # maximum accel [m/ss]
+SENSE_CONE_RADIUS = 10
+SENSE_CONE_ANGLE = np.pi/3
 
 # run params
 RUN_KRRT = False
@@ -81,11 +83,13 @@ def main():
                           MIN_SPEED, MAX_STEER, MAX_DSTEER)
         target_ind, _, nearest_index = lp.search_target_index(state)
         simulator = Simulator(new_obs_map, trajectory, DELTA_T)
+        target_path_coords = []
+        target_path_coords.append([trajectory.cx[target_ind], trajectory.cy[target_ind]])
         closest_path_coords = []
         closest_path_coords.append([trajectory.cx[0], trajectory.cy[0]])
         while T >= clock and lastIndex > target_ind:
             state = copy.copy(state)
-            if lp.local_obs_detected(state, cone_radius=10, cone_fov=np.pi/3):
+            if lp.local_obs_detected(state, cone_radius=SENSE_CONE_RADIUS, cone_fov=SENSE_CONE_ANGLE):
                 # run KRRT locally and find a new route
                 pass
 
@@ -98,15 +102,20 @@ def main():
             state.a = delta
             states.append(state)
             closest_path_coords.append([trajectory.cx[closest_index], trajectory.cy[closest_index]])
+            target_path_coords.append([trajectory.cx[target_ind], trajectory.cy[target_ind]])
 
         if RUN_ANIMATION:
             states_pixels = states.get_states_in_pixels(converter)
             traj_pixels = trajectory.get_trajectory_in_pixels(converter)
+            target_path_coords_pixels = converter.pathmeter2pathindex(target_path_coords)
             closest_path_coords_pixels = converter.pathmeter2pathindex(closest_path_coords)
-            states_pixels.calc_states_cones()
+            states_pixels.calc_states_cones(cone_radius=SENSE_CONE_RADIUS, cone_fov=SENSE_CONE_ANGLE)
 
             #simulator.show_simulation(states, closest_path_coords)
-            simulator.create_animation(states_pixels, traj_pixels, start_pixel, goal_pixel, closest_path_coords_pixels)
+            simulator.create_animation(start_pixel, goal_pixel,\
+                                    states_pixels, traj_pixels,\
+                                    target_path_coords=target_path_coords_pixels,\
+                                    closest_path_coords=None, fps=15)
 
 if __name__ == '__main__':
     main()
