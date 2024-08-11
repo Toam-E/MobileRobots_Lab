@@ -57,7 +57,7 @@ def adjust_polygon_to_roi(polygon, min_x, min_y):
     """
     return polygon - np.array([min_x, min_y])
 
-def check_polygon_intersection(roi, polygon, margin=1):
+def check_polygon_intersection(roi, polygon, margin=0):
     """
     Check if the polygon intersects with any non-zero pixel in the ROI.
     
