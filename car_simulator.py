@@ -214,7 +214,9 @@ class Simulator(object):
                     + ", speed[m/s]:" + str(round(states.v[i], 2)))
             plt.pause(0.00001)
 
-    def create_animation(self, states: SimStatesContainer, trajectory: Trajectory, start, goal, closest_path_coords=None):
+    def create_animation(self, start, goal, states: SimStatesContainer,\
+                         trajectory: Trajectory = None, target_path_coords=None,\
+                         closest_path_coords=None, fps=15):
 
         sim_plan = []
 
@@ -234,18 +236,15 @@ class Simulator(object):
             plt.scatter(start[0], start[1], s=100, c='g')
             plt.scatter(goal[0],goal[1], s=100, c='r')
 
-            # for stopping simulation with the esc key.
-            #plt.gcf().canvas.mpl_connect('key_release_event',
-            #        lambda event: [exit(0) if event.key == 'escape' else None])
             if trajectory is not None:
                 plt.plot(trajectory.cx, trajectory.cy, label="trajectory", linewidth=2, color='cyan')
-            #    plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
-                # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
             plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='green')
             #circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
             #ax.add_patch(circle)
 
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
+            if target_path_coords is not None:
+                plt.scatter(target_path_coords[i][0], target_path_coords[i][1], c='b')
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
 
@@ -277,7 +276,7 @@ class Simulator(object):
 
         # store gif
         plan_time = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        imageio.mimwrite(f'plan_{plan_time}.gif', sim_plan, 'GIF', fps=30, subrectangles=True)
+        imageio.mimwrite(f'plan_{plan_time}.gif', sim_plan, 'GIF', fps=fps, subrectangles=True)
 
     def save_simulation(self):
         pass
