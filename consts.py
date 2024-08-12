@@ -22,7 +22,7 @@ KINORRT_ITER            = 301 #350
 KINORRT_MAX_STEP_SIZE   = 20
 
 
-NEXT_IDX = 10
+NEXT_IDX = 15
 
 resolution = 0.05000000074505806
 inflation = 0.2/resolution

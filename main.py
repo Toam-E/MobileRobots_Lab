@@ -65,7 +65,8 @@ def main():
     if RUN_ADD_OBS:
         # add on path new obstacles
         path_fractions = [0.2, 0.4, 0.6, 0.8]
-        inflations = [4, 5, 5, 5]
+        inflations = [4, 4, 4, 4]
+        # inflations = [4, 5, 5, 5]
         new_obs_map = add_new_obstacles(inflated_map, path, path_fractions, inflations)
         #plt.imshow(new_obs_map, origin="lower")
         #plt.show()

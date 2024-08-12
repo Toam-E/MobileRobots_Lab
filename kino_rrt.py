@@ -118,7 +118,7 @@ class KINORRT(object):
         
         if np.random.rand() > self.p_bias:
             # rand_state = self.sample_uni()
-            if np.random.rand() > 0.8:
+            if np.random.rand() > 0.95:
                 sample_arround = start_pixel
             else:
                 sample_arround = goal

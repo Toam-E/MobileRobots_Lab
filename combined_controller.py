@@ -50,6 +50,7 @@ class CombinedController(object):
         
         self.target_ind = 0 # self.lp.search_target_index(self.state)[0]
         self.main_target_ind = self.target_ind
+        self.goal_ind = self.target_ind
 
 
         self.closest_path_coords = []
@@ -82,14 +83,16 @@ class CombinedController(object):
         print(f"len(optional_trajectories): {len(optional_trajectories)}")
         print(optional_trajectories)
         print(f"{optional_trajectories[0] == optional_trajectories[1]} {optional_trajectories[1] == optional_trajectories[2]} {optional_trajectories[2] == optional_trajectories[3]}")
-        longest_path_idx = 0
-        length = 0
+        lowest_cost_idx = 0
+        min_cost = 0
         for idx, (path, cost) in enumerate(optional_trajectories):
-            if length < len(path):
-                longest_path_idx = idx
-                length = len(path)
+            if len(path) < 2:
+                cost = cost + 20000
+            if min_cost > cost:
+                lowest_cost_idx = idx
+                min_cost = cost
 
-        return optional_trajectories[longest_path_idx]
+        return optional_trajectories[lowest_cost_idx]
     
     def get_krrt_path_meter(self, goal_pixel):
         optional_trajectories = []
@@ -104,6 +107,7 @@ class CombinedController(object):
 
         # choose best trajectory
         best_krrt_trajectory, cost = self.get_best_trajectory(optional_trajectories)
+        # TODO: THIS probably is THE problem!!
         while len (best_krrt_trajectory) < 2: #TODO: this is probably wrong
             print("inserting point to best_krrt_trajectory")
             best_krrt_trajectory.insert(0, self.converter.meter2pixel(self.closest_path_coords[-1]))
@@ -118,12 +122,12 @@ class CombinedController(object):
             if self.lp.local_obs_detected(self.state, cone_radius=8, cone_fov=np.pi/4):
                 # prepare env for state switch                    
                 if self.target_ind + NEXT_IDX < self.lastIndex:
-                    goal_pixel_idx = (self.target_ind + NEXT_IDX)
-                    print(f"goal_pixel_idx {goal_pixel_idx} self.target_ind {self.target_ind}")
+                    self.goal_idx = (self.target_ind + NEXT_IDX)
+                    print(f"self.goal_idx {self.goal_idx} self.target_ind {self.target_ind}")
                 else:
-                    goal_pixel_idx = self.lastIndex
+                    self.goal_idx = self.lastIndex
                 # goal_pixel_idx = (self.target_ind + NEXT_IDX) if (self.target_ind + NEXT_IDX < self.lastIndex) else self.lastIndex
-                goal_pixel = self.converter.meter2pixel((self.orig_trajectory.cx[goal_pixel_idx], self.orig_trajectory.cy[goal_pixel_idx]))
+                goal_pixel = self.converter.meter2pixel((self.orig_trajectory.cx[self.goal_idx], self.orig_trajectory.cy[self.goal_idx]))
                 print(f"before get_krrt_path_meter goal_pixel {goal_pixel}")
 
                 # run KRRT locally and find best new trajectory
@@ -159,8 +163,10 @@ class CombinedController(object):
                 # self.target_ind         = self.main_target_ind
                 self.main_trajectory    = self.orig_trajectory
                 self.lp                 = self.orig_lp
-                self.target_ind         = min(max(self.lp.search_target_index(self.state)[0] + round(self.lp.Lfc),\
-                                                   self.main_target_ind), self.lastIndex)
+                self.target_ind         = min(max(self.lp.search_target_index(self.state)[0] \
+                                                  + round(self.lp.Lfc)\
+                                                  , self.main_target_ind), self.lastIndex)
+                # self.target_ind         = min(max(round(np.mean(self.goal_ind, self.main_target_ind)), self.main_target_ind), self.lastIndex)
             else: # self.controller_state == CONTROLLER_STATES_KRRT
                 self.main_target_ind    = self.target_ind
                 self.target_ind         = 0
