@@ -16,7 +16,7 @@ class CombinedController(object):
                  krrt_tries = KINORRT_TRIES, krrt_iters = KINORRT_ITER, krrt_max_step = KINORRT_MAX_STEP_SIZE):
         self.map = env_map
         if converter is None:
-            converter = CSpace(resolution, origin_x=-4.73, origin_y=-5.66, map_shape=env_map.shape)
+            converter = CSpace(RESOLUTION, origin_x=-4.73, origin_y=-5.66, map_shape=env_map.shape)
         self.converter = converter
         
         self.krrt_tries = krrt_tries

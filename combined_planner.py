@@ -4,6 +4,7 @@ from consts import *
 from kino_rrt import KINORRT
 from car_simulator import SimState, SimStatesContainer, Simulator
 from local_planner import LocalPlanner
+from cspace import CSpace
 
 # run params
 RUN_KRRT = False
@@ -13,12 +14,15 @@ RUN_ANIMATION = True
 
 class CombinedPlanner(object):
 
-    def __init__(self, trajectory : Trajectory, sim : Simulator, states : SimStatesContainer,\
-                 local_planner : LocalPlanner):
+    def __init__(self, obs_map, trajectory : Trajectory, converter: CSpace,\
+                  sim : Simulator, states : SimStatesContainer):
+
+        self.lp = LocalPlanner(converter, obs_map, trajectory.cx, trajectory.cy,\
+                            LF_K, LFC, V_KP, WB, MAX_ACCEL, MAX_SPEED,\
+                            MIN_SPEED, MAX_STEER, MAX_DSTEER)
         self.trajectory = trajectory
         self.sim = sim
         self.states = states
-        self.lp = local_planner
         self.lastIndex = len(trajectory.cx) - 1
         self.clock = 0.0
         self.target_path_coords = []
