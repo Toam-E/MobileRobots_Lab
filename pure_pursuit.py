@@ -1,14 +1,23 @@
 import numpy as np
 import math
 from trajectory import Trajectory
-import car_consts
 import matplotlib.pyplot as plt
-from car_simulator import State, States, Simulator
+from car_simulator import SimState, SimStatesContainer
+from utils import get_normalized_angle
+from kino_rrt import KINORRT
+from cspace import CSpace
+from geo_utils import *
 
 
 
-class PurePursuit_Controller(object):
-    def __init__(self, cx, cy, k=0.1, Lfc=0.5, Kp =1.0, WB =0.335, MAX_ACCEL=1.0, MAX_SPEED=3, MIN_SPEED=-3, MAX_STEER=np.deg2rad(27.0), MAX_DSTEER=np.deg2rad(150.0) ):
+class PurePursuitController(object):
+    def __init__(self, converter: CSpace, map, cx, cy,\
+                 k=0.1, Lfc=0.5, Kp =1.0, WB =0.335,\
+                 MAX_ACCEL=1.0, MAX_SPEED=3, MIN_SPEED=-3,\
+                 MAX_STEER=np.deg2rad(27.0), MAX_DSTEER=np.deg2rad(150.0) ):
+        self.converter = converter
+        self.map = map
+        #self.krrt = KINORRT(env_map=map, max_step_size=20, max_itr=100, p_bias=0.1,converter=converter)
         self.k = k  # look forward gain
         self.Lfc = Lfc   # [m] look-ahead distance
         self.Kp = Kp  # speed proportional gain
@@ -22,7 +31,7 @@ class PurePursuit_Controller(object):
         self.MAX_STEER = MAX_STEER
         self.MAX_DSTEER = MAX_DSTEER
 
-    def pure_pursuit_steer_control(self, state: State, trajectory: Trajectory,  dt):
+    def pure_pursuit_steer_control(self, state: SimState, trajectory: Trajectory,  dt):
         '''
         input: 
         current state,
@@ -58,7 +67,7 @@ class PurePursuit_Controller(object):
         return linear_velocity
         
 
-    def search_target_index(self, state: State):
+    def search_target_index(self, state: SimState):
         '''
         input: current state
         output:
@@ -96,7 +105,31 @@ class PurePursuit_Controller(object):
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
 
-def plot_error(closest_path_coords, states:States, trajectory:Trajectory):
+    def local_obs_detected(self, state: SimState, cone_radius = 15, cone_fov=np.pi/3):
+        state_meter_list = [state.x, state.y, state.yaw]
+        state_pixel = self.converter.meter2pixel(state_meter_list)
+        cone_origin_x = state_pixel[0]
+        cone_origin_y = state_pixel[1]
+        cone_origin_yaw = state_pixel[2]
+        fov_angles = np.linspace(start=cone_fov/2, stop=-cone_fov/2, num=cone_radius)
+        tile_yaw = np.tile(cone_origin_yaw, fov_angles.size)
+        fov_angles = np.expand_dims(tile_yaw + fov_angles, axis=0)
+        car_angles = np.apply_along_axis(get_normalized_angle, 0, fov_angles)
+        car_cone_xs = cone_origin_x + cone_radius * np.cos(car_angles)
+        car_cone_ys = cone_origin_y + cone_radius * np.sin(car_angles)
+        car_cone_xs = np.append(np.insert(car_cone_xs, 0, cone_origin_x), cone_origin_x)
+        car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
+        # check if cone is in collision
+        cone_points = [list(car_cone_point) for car_cone_point in zip(car_cone_xs.flatten(), car_cone_ys.flatten())]
+        min_x, min_y, max_x, max_y = calculate_bounding_box(cone_points)
+        min_x, min_y, max_x, max_y = clip_bounding_box(min_x, min_y, max_x, max_y, self.map.shape)
+        roi = extract_roi(self.map, min_x, min_y, max_x, max_y)
+        adjusted_polygon = adjust_polygon_to_roi(cone_points, min_x, min_y)
+        intersects = check_polygon_intersection(roi, adjusted_polygon)
+        state.obs_ahead = intersects
+        return intersects
+
+def plot_error(closest_path_coords, states:SimStatesContainer, trajectory:Trajectory):
     fig = plt.figure()
     ax = fig.add_subplot()
     total_tracking_error = 0
@@ -109,44 +142,3 @@ def plot_error(closest_path_coords, states:States, trajectory:Trajectory):
     ax.set_ylabel('Tracking Error')
     ax.grid()
     plt.show()
-
-def main():
-    #  hyper-parameters
-    k = 0.1  # look forward gain
-    Lfc = 1.0  # [m] look-ahead distance
-    Kp = 1.0  # speed proportional gain
-    dt = 0.1  # [s] time tick
-    target_speed = 1.0  # [m/s]
-    T = 100.0  # max simulation time
-    WB = car_consts.wheelbase 
-    MAX_STEER = car_consts.max_steering_angle_rad  # maximum steering angle [rad]
-    MAX_DSTEER = car_consts.max_dt_steering_angle  # maximum steering speed [rad/s]
-    MAX_SPEED = car_consts.max_linear_velocity  # maximum speed [m/s]
-    MIN_SPEED = car_consts.min_linear_velocity  # minimum speed [m/s]
-    MAX_ACCEL = 1.0  # maximum accel [m/ss]
-
-    path = np.load('path_maze_meter_sim.npy')
-    trajectory = Trajectory(dl=0.1, path =path, TARGET_SPEED=target_speed)
-    state = State(x=trajectory.cx[0], y=trajectory.cy[0], yaw=trajectory.cyaw[0], v=0.0)
-    lastIndex = len(trajectory.cx) - 1
-    clock = 0.0
-    states = States()
-    states.append(clock, state)
-    pp = PurePursuit_Controller(trajectory.cx, trajectory.cy, k, Lfc, Kp, WB, MAX_ACCEL, MAX_SPEED, MIN_SPEED, MAX_STEER, MAX_DSTEER)
-    target_ind, _, nearest_index = pp.search_target_index(state)
-    simulator = Simulator(trajectory, dt)
-    closest_path_coords = []
-    while T >= clock and lastIndex > target_ind:
-        state.v = pp.proportional_control_acceleration(target_speed, state.v, dt)
-        delta, target_ind, closest_index = pp.pure_pursuit_steer_control(state, trajectory, dt)
-        state.predelta = delta
-        state = simulator.update_state(state, delta)  # Control vehicle
-        clock += dt
-        states.append(clock, state, delta)
-        closest_path_coords.append([trajectory.cx[closest_index], trajectory.cy[closest_index]])
-    simulator.show_simulation(states, closest_path_coords)
-    plot_error(closest_path_coords, states, trajectory)
-
-
-if __name__ == '__main__':
-    main()
