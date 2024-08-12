@@ -57,13 +57,15 @@ def main():
                 np.save(f'krrt_path_pixels.npy', path)
                 np.save(f'krrt_path_meters.npy', path_meter)
     else:
+        # path = np.load('path_maze_kinorrtpixels.npy')
+        # path_meter = np.load('path_maze_kinorrtmeters.npy')
         path = np.load('krrt_path_pixels.npy')
         path_meter = np.load('krrt_path_meters.npy')
 
     if RUN_ADD_OBS:
         # add on path new obstacles
         path_fractions = [0.2, 0.4, 0.6, 0.8]
-        inflations = [4, 6, 8, 6]
+        inflations = [4, 5, 5, 5]
         new_obs_map = add_new_obstacles(inflated_map, path, path_fractions, inflations)
         #plt.imshow(new_obs_map, origin="lower")
         #plt.show()
@@ -72,8 +74,9 @@ def main():
 
 
     if RUN_PP:
-        controller = CombinedController(path_meter, new_obs_map, converter = converter)
-        controller.find_path(goal_pixel)
+        try:
+            controller = CombinedController(path_meter, new_obs_map, converter = converter)
+            controller.find_path(goal_pixel)
         # trajectory = Trajectory(dl=0.1, path=path_meter, TARGET_SPEED=TARGETED_SPEED)
         # state = SimState(x=trajectory.cx[0], y=trajectory.cy[0], yaw=trajectory.cyaw[0], v=0.0)
         # lastIndex = len(trajectory.cx) - 1
@@ -121,7 +124,8 @@ def main():
             # state.a = delta
             # states.append(state)
             # closest_path_coords.append([trajectory.cx[closest_index], trajectory.cy[closest_index]])
-
+        except :
+            pass
         if RUN_ANIMATION:
             controller.set_controller_state(CONTROLLER_STATES_PP)
             states_pixels = controller.states.get_states_in_pixels(controller.converter)
@@ -129,8 +133,9 @@ def main():
             closest_path_coords_pixels = controller.converter.pathmeter2pathindex(controller.closest_path_coords)
             states_pixels.calc_states_cones()
 
-            #simulator.show_simulation(states, closest_path_coords)
-            controller.simulator.create_animation(states_pixels, traj_pixels, start_pixel, goal_pixel, closest_path_coords_pixels)
+            controller.simulator.show_simulation(controller.states, controller.krrt_traj_list_meters, controller.krrt.samples, controller.closest_path_coords)
+            controller.simulator.create_animation(states_pixels, traj_pixels, controller.krrt_traj_list_pixels, controller.krrt.samples, start_pixel, goal_pixel, closest_path_coords_pixels)
 
 if __name__ == '__main__':
     main()
+

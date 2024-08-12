@@ -89,6 +89,7 @@ class SimStatesContainer(object):
             states.append(state_pixel)
         return states
     
+    
     def calc_states_cones(self, cone_radius = 15, cone_fov=np.pi/3):
         # add "visibility cone" to demonstrate what the car sees
 
@@ -116,6 +117,9 @@ class Simulator(object):
         self.time = 0.0
         self.dt = DT
         self.map=map
+
+    def get_trajectory_in_pixels(self, trajectory:Trajectory, converter:CSpace):
+        return trajectory.get_trajectory_in_pixels(converter)
 
     def plot_car(self, x, y, yaw, steer=0.0, cabcolor="-r", truckcolor="-k"):  # pragma: no cover
 
@@ -195,26 +199,38 @@ class Simulator(object):
         return yaw
     
 
-    def show_simulation(self, states: SimStatesContainer, closest_path_coords=None):
-        for i in range(len(states.x)-1):
+    def show_simulation(self, states: SimStatesContainer, krrt_traj_list, samples, closest_path_coords=None):
+
+        states_x = [ state.x for state in states]
+        states_y = [ state.y for state in states]
+        states_t = [ state.t for state in states]
+        states_v = [ state.v for state in states]
+
+        for i in range(len(states_x)-1):
             plt.cla()
             # for stopping simulation with the esc key.
             plt.gcf().canvas.mpl_connect('key_release_event',
                     lambda event: [exit(0) if event.key == 'escape' else None])
             if self.trajectory is not None:
                 plt.scatter(self.trajectory.cx, self.trajectory.cy, c='cyan')#, "-r", label="course")
+            for traj in krrt_traj_list:
+                if traj is not None:
+                    plt.plot(traj.cx, traj.cy, label="krrt trajectory", linewidth=2, color='red')
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
-            plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
+            for x_random, x_new in samples:
+                plt.scatter(x_random[0], x_random[1])
+                plt.scatter(x_new[0], x_new[1])
+            plt.plot(states_x[:i], states_y[:i], label="trajectory", linewidth=2, color='green')
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
             plt.axis("equal")
             plt.grid(True)
-            plt.title("Time[s]:" + str(round(states.t[i], 2))
-                    + ", speed[m/s]:" + str(round(states.v[i], 2)))
+            plt.title("Time[s]:" + str(round(states_t[i], 2))
+                    + ", speed[m/s]:" + str(round(states_v[i], 2)))
             plt.pause(0.00001)
 
-    def create_animation(self, states: SimStatesContainer, trajectory: Trajectory, start, goal, closest_path_coords=None):
+    def create_animation(self, states: SimStatesContainer, trajectory: Trajectory, krrt_traj_list, samples, start, goal, closest_path_coords=None):
 
         sim_plan = []
 
@@ -242,6 +258,13 @@ class Simulator(object):
             #    plt.scatter(trajectory.cx, trajectory.cy, c='cyan')#, "-r", label="course")
                 # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
             plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='green')
+            for traj in krrt_traj_list:
+                if traj is not None:
+                    # traj = traj.get_trajectory_in_pixels(converter)
+                    plt.plot(traj.cx, traj.cy, label="krrt trajectory", linewidth=2, color='red')
+            for x_random, x_new in samples:
+                plt.scatter(x_random[0], x_random[1], c='brown')
+                plt.scatter(x_new[0], x_new[1], c='orange')
             #circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
             #ax.add_patch(circle)
 

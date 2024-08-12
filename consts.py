@@ -18,11 +18,11 @@ MAX_ACCEL = 1.0  # maximum accel [m/ss]
 
 # Kino RRT params
 KINORRT_TRIES           = 4
-KINORRT_ITER            = 50 #350
-KINORRT_MAX_STEP_SIZE   = 25
+KINORRT_ITER            = 301 #350
+KINORRT_MAX_STEP_SIZE   = 20
 
 
-NEXT_IDX = 20
+NEXT_IDX = 10
 
 resolution = 0.05000000074505806
 inflation = 0.2/resolution

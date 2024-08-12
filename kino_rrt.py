@@ -17,6 +17,8 @@ class KINORRT(object):
         self.ackerman = Odom(converter)
         self.goal_radius = 4
 
+        self.samples = []
+
     def reset(self):
         self.tree.edges = dict()
         self.tree.vertices = dict()
@@ -28,7 +30,7 @@ class KINORRT(object):
         while itr < self.max_itr:
             
             # sample random vertex
-            x_random = self.sample(goal_pixel)
+            x_random = self.sample(start_pixel, goal_pixel)
 
             # find nearest neighbor
             x_near_idx, x_near = self.tree.GetNearestVertex(x_random)
@@ -38,6 +40,7 @@ class KINORRT(object):
             
             # propagate
             x_new, edge, edge_cost = self.ackerman.propagate(steering, velocity ,delta_time, x_near)
+            self.samples.append((self.converter.pixel2meter(x_random), self.converter.pixel2meter(x_new)))
             
             # add vertex and edge
             if self.local_planner(edge):
@@ -49,7 +52,7 @@ class KINORRT(object):
                     return self.get_shortest_path(x_new_idx)
 
             itr += 1
-            if itr%49 == 0:
+            if itr%100 == 0:
                 print(f'itr: {itr}')
         x_near_idx, x_near = self.tree.GetNearestVertex(goal_pixel)
         # while (not self.tree.isConfExists(x_near)):
@@ -65,7 +68,8 @@ class KINORRT(object):
         # while itr < self.max_itr:
             
         #     # sample random vertex
-        #     x_random = self.sample(goal)
+        #     x_random = self.sample(start, goal)
+        #     # self.samples.append(x_random)
 
         #     # find nearest neighbor
         #     x_near_idx, x_near = self.tree.GetNearestVertex(x_random)
@@ -75,6 +79,7 @@ class KINORRT(object):
             
         #     # propagate
         #     x_new, edge, edge_cost = self.ackerman.propagate(steering, velocity ,delta_time, x_near)
+        #     self.samples.append(x_random, x_new)
             
         #     # add vertex and edge
         #     if self.local_planner(edge):
@@ -91,15 +96,35 @@ class KINORRT(object):
         path, path_idx, cost = self._find_path(start, goal)
         if path[-1] == goal:
             return path, path_idx, cost
+        # x_near_idx, x_near = self.tree.GetNearestVertex(goal)
+        # return self.get_shortest_path(x_near_idx)
         return None, None, None
     
-    def sample(self, goal):
+    def sample_gaussian(self, start_pixel):
+        mean = start_pixel[:2]
+        std_dev = [5,5]
+        x = np.random.normal(mean[0], std_dev[0])
+        y = np.random.normal(mean[1], std_dev[1])
+        theta = np.random.uniform(0, self.env_yaw_range)
+        return x, y, theta
+
+    def sample_uni(self):
+        x = np.random.randint(0, self.env_cols-1)
+        y = np.random.randint(0, self.env_rows-1)
+        theta = np.random.uniform(0, self.env_yaw_range)
+        return [x, y, theta]
+
+    def sample(self, start_pixel, goal):
         
         if np.random.rand() > self.p_bias:
-            x = np.random.randint(0, self.env_cols-1)
-            y = np.random.randint(0, self.env_rows-1)
-            theta = np.random.uniform(0, self.env_yaw_range)
-            rand_state = [x, y, theta]
+            # rand_state = self.sample_uni()
+            if np.random.rand() > 0.8:
+                sample_arround = start_pixel
+            else:
+                sample_arround = goal
+            rand_state = self.sample_gaussian(sample_arround)
+            while self.is_in_collision(rand_state):
+                rand_state = self.sample_gaussian(sample_arround)
         else:
             rand_state = goal
         return rand_state

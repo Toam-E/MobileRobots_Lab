@@ -55,6 +55,9 @@ class CombinedController(object):
         self.closest_path_coords = []
         self.closest_path_coords.append([self.orig_trajectory.cx[0], self.orig_trajectory.cy[0]])
 
+        self.krrt_traj_list_meters = []
+        self.krrt_traj_list_pixels = []
+
 
     @property
     def lastIndex(self):
@@ -77,49 +80,59 @@ class CombinedController(object):
         # by distance from original trajectory
         # later - by distance from obstacles in the way - not too close to obstacles.
         print(f"len(optional_trajectories): {len(optional_trajectories)}")
+        print(optional_trajectories)
         print(f"{optional_trajectories[0] == optional_trajectories[1]} {optional_trajectories[1] == optional_trajectories[2]} {optional_trajectories[2] == optional_trajectories[3]}")
-        return optional_trajectories[np.random.randint(len(optional_trajectories)-1)]
+        longest_path_idx = 0
+        length = 0
+        for idx, (path, cost) in enumerate(optional_trajectories):
+            if length < len(path):
+                longest_path_idx = idx
+                length = len(path)
+
+        return optional_trajectories[longest_path_idx]
     
-    def get_krrt_path(self, goal_pixel):
+    def get_krrt_path_meter(self, goal_pixel):
         optional_trajectories = []
 
         # run KRRT locally and find new optional trajectories
-        krrt_start = self.converter.meter2pixel((self.state.x, self.state.y, self.state.yaw))
+        krrt_start_pixel = self.converter.meter2pixel((self.state.x, self.state.y, self.state.yaw))
         for i in range(KINORRT_TRIES):
             self.krrt.reset()
-            curr_trajectory, _, curr_cost = self.krrt._find_path(krrt_start, goal_pixel)
+            curr_trajectory, _, curr_cost = self.krrt._find_path(krrt_start_pixel, goal_pixel)
             if curr_trajectory is not None:
                 optional_trajectories.append((curr_trajectory, curr_cost))
 
         # choose best trajectory
         best_krrt_trajectory, cost = self.get_best_trajectory(optional_trajectories)
-        while len (best_krrt_trajectory) < 2:
+        while len (best_krrt_trajectory) < 2: #TODO: this is probably wrong
             print("inserting point to best_krrt_trajectory")
-            best_krrt_trajectory.insert(0, self.closest_path_coords[-1])
-        # return self.converter.pathindex2pathmeter(best_krrt_trajectory)
-        return best_krrt_trajectory
+            best_krrt_trajectory.insert(0, self.converter.meter2pixel(self.closest_path_coords[-1]))
+        return self.converter.pathindex2pathmeter(best_krrt_trajectory)
+        # return best_krrt_trajectory
 
     def find_path(self, goal_pixel):
         # the main part of the controller
+        print(f"in find path goal_pixel {goal_pixel}")
         while T >= self.clock and self.lastIndex > self.target_ind:
             # state = copy.copy(state) # TODO: what is this?
-            if self.lp.local_obs_detected(self.state, cone_radius=10, cone_fov=np.pi/3):
-                # prepare env for state switch
-                if (self.lastIndex < 380):
-                    raise Exception("self.lastIndex < 380!!!!!!!!!!")
+            if self.lp.local_obs_detected(self.state, cone_radius=8, cone_fov=np.pi/4):
+                # prepare env for state switch                    
                 if self.target_ind + NEXT_IDX < self.lastIndex:
                     goal_pixel_idx = (self.target_ind + NEXT_IDX)
                     print(f"goal_pixel_idx {goal_pixel_idx} self.target_ind {self.target_ind}")
                 else:
                     goal_pixel_idx = self.lastIndex
                 # goal_pixel_idx = (self.target_ind + NEXT_IDX) if (self.target_ind + NEXT_IDX < self.lastIndex) else self.lastIndex
-                # goal_pixel = (self.orig_trajectory.cx[goal_pixel_idx], self.orig_trajectory.cy[goal_pixel_idx])
+                goal_pixel = self.converter.meter2pixel((self.orig_trajectory.cx[goal_pixel_idx], self.orig_trajectory.cy[goal_pixel_idx]))
+                print(f"before get_krrt_path_meter goal_pixel {goal_pixel}")
 
                 # run KRRT locally and find best new trajectory
-                best_krrt_trajectory = self.get_krrt_path(goal_pixel) # TODO: change to local goal_pixel!
+                best_krrt_trajectory = self.get_krrt_path_meter(goal_pixel) # TODO: change to local goal_pixel!
                 print(best_krrt_trajectory)
                 self.temp_trajectory = Trajectory(dl=0.1, path=best_krrt_trajectory, TARGET_SPEED=TARGETED_SPEED)
-                print(self.converter.pathindex2pathmeter(self.temp_trajectory.path))
+                self.krrt_traj_list_meters.append(copy.copy(self.temp_trajectory))
+                self.krrt_traj_list_pixels.append(copy.copy(self.temp_trajectory.get_trajectory_in_pixels(self.converter)))
+                # print(self.converter.pathindex2pathmeter(self.temp_trajectory.path))
 
                 # switch state in order to pure pursuit according to new trajectory
                 self.set_controller_state(CONTROLLER_STATES_KRRT)
@@ -135,6 +148,8 @@ class CombinedController(object):
             else: # update according to original trajectory
                 self.set_controller_state(CONTROLLER_STATES_PP)
                 self.pure_pursuit_update_state()
+        if T < self.clock:
+            raise Exception("ran out of time!")
     
     def set_controller_state(self, c_state):
         if self.controller_state != c_state:
@@ -144,7 +159,8 @@ class CombinedController(object):
                 # self.target_ind         = self.main_target_ind
                 self.main_trajectory    = self.orig_trajectory
                 self.lp                 = self.orig_lp
-                self.target_ind         = max(self.lp.search_target_index(self.state)[0] + round(self.lp.Lfc), self.main_target_ind)
+                self.target_ind         = min(max(self.lp.search_target_index(self.state)[0] + round(self.lp.Lfc),\
+                                                   self.main_target_ind), self.lastIndex)
             else: # self.controller_state == CONTROLLER_STATES_KRRT
                 self.main_target_ind    = self.target_ind
                 self.target_ind         = 0
