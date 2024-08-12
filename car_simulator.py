@@ -1,16 +1,17 @@
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import math
 import numpy as np
-import car_consts
+from consts import *
 from cspace import CSpace
 from trajectory import Trajectory
 # import  rc_car.scripts.utils.cubic_spline_planner as cubic_spline_planner
 import imageio
 from datetime import datetime
 from utils import get_normalized_angle
+#from PIL import Image
 
 MAX_TIME = 500.0  # max simulation time
 TARGET_SPEED = 10.0 / 3.6  # [m/s] target speed
@@ -23,13 +24,8 @@ BACKTOWHEEL = 0.1  # [m]
 WHEEL_LEN = 0.1  # [m]
 WHEEL_WIDTH = 0.07  # [m]
 TREAD = 0.2  # [m]
-WB = car_consts.wheelbase  # [m]
 
-MAX_STEER = car_consts.max_steering_angle_rad  # maximum steering angle [rad]
-MAX_DSTEER = car_consts.max_dt_steering_angle  # maximum steering speed [rad/s]
-MAX_SPEED = car_consts.max_linear_velocity  # maximum speed [m/s]
-MIN_SPEED = car_consts.min_linear_velocity  # minimum speed [m/s]
-MAX_ACCEL = 1.0  # maximum accel [m/ss]
+
 
 class State:
     """
@@ -55,6 +51,7 @@ class SimState(State):
         self.a = None
         self.cone = None
         self.obs_ahead = None
+        self.mpc_goal = None
 
 class SimStatesContainer(object):
     def __init__(self):
@@ -86,6 +83,8 @@ class SimStatesContainer(object):
             state_pixel = SimState(x=state_pixel_list[0], y=state_pixel_list[1],\
                                 yaw=state_pixel_list[2], v=state.v)
             state_pixel.obs_ahead = state.obs_ahead
+            if state.mpc_goal is not None:
+                state_pixel.mpc_goal = converter.meter2pixel(state.mpc_goal)
             states.append(state_pixel)
         return states
     
@@ -195,25 +194,6 @@ class Simulator(object):
         return yaw
     
 
-    def show_simulation(self, states: SimStatesContainer, closest_path_coords=None):
-        for i in range(len(states.x)-1):
-            plt.cla()
-            # for stopping simulation with the esc key.
-            plt.gcf().canvas.mpl_connect('key_release_event',
-                    lambda event: [exit(0) if event.key == 'escape' else None])
-            if self.trajectory is not None:
-                plt.scatter(self.trajectory.cx, self.trajectory.cy, c='cyan')#, "-r", label="course")
-                # plt.plot(self.trajectory.ax, self.trajectory.ay, "-b", label="course")
-            plt.plot(states.x[:i], states.y[:i], label="trajectory", linewidth=2, color='green')
-            #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
-            if closest_path_coords is not None:
-                plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
-            plt.axis("equal")
-            plt.grid(True)
-            plt.title("Time[s]:" + str(round(states.t[i], 2))
-                    + ", speed[m/s]:" + str(round(states.v[i], 2)))
-            plt.pause(0.00001)
-
     def create_animation(self, start, goal, states: SimStatesContainer,\
                          trajectory: Trajectory = None, target_path_coords=None,\
                          closest_path_coords=None, fps=15):
@@ -224,12 +204,13 @@ class Simulator(object):
         states_y = [ state.y for state in states]
         states_cone = [ state.cone for state in states]
         states_obs_ahead = [ state.obs_ahead for state in states]
+        states_mpc_local_goals = [ state.mpc_goal for state in states]
 
         num_of_states = len(states) 
         for i in range(num_of_states):
             print(f"i={i+1}/{num_of_states}")
 
-            fig, ax = plt.subplots(dpi=300)  # Create a new figure and axis
+            fig, ax = plt.subplots(dpi=150)  # Create a new figure and axis
             ax.axis('off')
             ax.imshow(self.map, origin="lower")
 
@@ -255,6 +236,10 @@ class Simulator(object):
                     cone_color = "mediumpurple"
                 plt.fill(states_cone[i][0], states_cone[i][1], cone_color, zorder=13, alpha=0.5)
 
+            if states_mpc_local_goals[i] is not None:
+                plt.scatter(states_mpc_local_goals[i][0], states_mpc_local_goals[i][1],s=20, c='r')
+
+
             ax.grid(False)
             plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
             #plt.title("Time[s]:" + str(round(states.t[i], 2))
@@ -269,6 +254,13 @@ class Simulator(object):
             data = data.reshape(canvas.get_width_height()[::-1] + (3,))
             #pic_time = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
             #imageio.imwrite(f"out/{i}_{pic_time}.jpeg", data)
+            # Resize the image before appending it to the list
+            
+            #data = resize_image(data, new_width, new_height)
+            #print(data.shape)
+            x_min, x_max, y_min, y_max = (0, data.shape[0], int(0.3*data.shape[0]), int(0.7*data.shape[0]))
+            data = data[y_min:y_max, x_min:x_max]
+
             sim_plan.append(data)
 
             # Close the figure to release memory
@@ -282,3 +274,11 @@ class Simulator(object):
         pass
     
 
+
+"""
+def resize_image(image, new_width, new_height):
+    pil_image = Image.fromarray(image)
+    resized_pil_image = pil_image.resize((new_width, new_height), Image.ANTIALIAS)
+    resized_image = np.array(resized_pil_image)
+    return resized_image
+"""
