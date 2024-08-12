@@ -1,16 +1,13 @@
+import math
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import math
-import numpy as np
+from sim_state import SimState, SimStatesContainer
 from consts import *
-from cspace import CSpace
 from trajectory import Trajectory
-# import  rc_car.scripts.utils.cubic_spline_planner as cubic_spline_planner
 import imageio
 from datetime import datetime
-from utils import get_normalized_angle
 #from PIL import Image
 
 MAX_TIME = 500.0  # max simulation time
@@ -24,90 +21,6 @@ BACKTOWHEEL = 0.1  # [m]
 WHEEL_LEN = 0.1  # [m]
 WHEEL_WIDTH = 0.07  # [m]
 TREAD = 0.2  # [m]
-
-
-
-class State:
-    """
-    vehicle state class
-    """
-    def __init__(self, x=0.0, y=0.0, yaw=0.0, v=0.0):
-        self.x = x
-        self.y = y
-        self.yaw = yaw
-        self.v = v
-        self.rear_x = self.x - ((WB / 2) * math.cos(self.yaw))
-        self.rear_y = self.y - ((WB / 2) * math.sin(self.yaw))
-        self.predelta = 0.0
-
-class SimState(State):
-    """
-    Simulation state class
-    """
-    def __init__(self, x=0.0, y=0.0, yaw=0.0, v=0.0):
-        super().__init__(x, y, yaw, v)
-        self.t = None
-        self.d = None
-        self.a = None
-        self.cone = None
-        self.obs_ahead = None
-        self.mpc_goal = None
-
-class SimStatesContainer(object):
-    def __init__(self):
-        self.states = []
-        self.index = 0
-
-    def __iter__(self):
-        self.index = 0
-        return self
-
-    def __next__(self):
-        if self.index < len(self.states):
-            result = self.states[self.index]
-            self.index += 1
-            return result
-        else:
-            raise StopIteration        
-
-    def __len__(self):
-        return len(self.states)
-    
-    def append(self, state: SimState):
-        self.states.append(state)
-
-    def get_states_in_pixels(self, converter:CSpace):
-        states = SimStatesContainer()
-        for idx, state in enumerate(self.states):
-            state_pixel_list = converter.meter2pixel([state.x, state.y, state.yaw])
-            state_pixel = SimState(x=state_pixel_list[0], y=state_pixel_list[1],\
-                                yaw=state_pixel_list[2], v=state.v)
-            state_pixel.obs_ahead = state.obs_ahead
-            if state.mpc_goal is not None:
-                state_pixel.mpc_goal = converter.meter2pixel(state.mpc_goal)
-            states.append(state_pixel)
-        return states
-    
-    def calc_states_cones(self, cone_radius = 15, cone_fov=np.pi/3):
-        # add "visibility cone" to demonstrate what the car sees
-
-        # compute a pixeled arc for the cone
-        for state in self.states:
-            cone_origin_x = state.x
-            cone_origin_y = state.y
-            cone_origin_yaw = state.yaw
-            fov_angles = np.linspace(start=cone_fov/2, stop=-cone_fov/2, num=cone_radius)
-            tile_yaw = np.tile(cone_origin_yaw, fov_angles.size)
-            fov_angles = np.expand_dims(tile_yaw + fov_angles, axis=0)
-            car_angles = np.apply_along_axis(get_normalized_angle, 0, fov_angles)
-            car_cone_xs = cone_origin_x + cone_radius * np.cos(car_angles)
-            car_cone_ys = cone_origin_y + cone_radius * np.sin(car_angles)
-
-            car_cone_xs = np.append(np.insert(car_cone_xs, 0, cone_origin_x), cone_origin_x)
-            car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
-
-            state.cone = [car_cone_xs, car_cone_ys]
-        return
 
 class Simulator(object):
     def __init__(self, map,  trajectory=None ,DT = 0.1):
@@ -204,7 +117,8 @@ class Simulator(object):
         states_y = [ state.y for state in states]
         states_cone = [ state.cone for state in states]
         states_obs_ahead = [ state.obs_ahead for state in states]
-        states_mpc_local_goals = [ state.mpc_goal for state in states]
+        states_mpc_local_goals = [ state.mpc_local_goal_pixel for state in states]
+        states_mpc_bbox = [ state.mpc_bbox for state in states]
 
         num_of_states = len(states) 
         for i in range(num_of_states):
@@ -216,6 +130,12 @@ class Simulator(object):
 
             plt.scatter(start[0], start[1], s=100, c='g')
             plt.scatter(goal[0],goal[1], s=100, c='r')
+
+            if states_mpc_bbox[i] is not None:
+                x_min, x_max, y_min, y_max = states_mpc_bbox[i]
+                x_coords = [x_min, x_max, x_max, x_min]
+                y_coords = [y_min, y_min, y_max, y_max]
+                plt.fill(x_coords, y_coords, color='orange', alpha=0.5)
 
             if trajectory is not None:
                 plt.plot(trajectory.cx, trajectory.cy, label="trajectory", linewidth=2, color='cyan')

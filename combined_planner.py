@@ -6,6 +6,7 @@ from kino_rrt import KINORRT
 from car_simulator import SimState, SimStatesContainer, Simulator
 from pure_pursuit import PurePursuitController
 from cspace import CSpace
+from geo_utils import calculate_bounding_box, clip_bounding_box
 
 MPC_KRRT_DEPTH = 3
 MPC_MAX_SEARCH_ITERATIONS = 100
@@ -53,12 +54,19 @@ class ModelPredictiveController(object):
     def calc_distance(self, rear_x, rear_y, point_x, point_y):
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
+    def calc_search_area(self, state:SimState, curren_state_margin=10):
+        list_of_state_pixel = self.converter.meter2pixel([state.x, state.y, state.yaw])
+        state_position_pixel = [list_of_state_pixel[0], list_of_state_pixel[1]]
+        min_x, max_x, min_y, max_y = calculate_bounding_box(state_position_pixel,\
+            state.mpc_local_goal_pixel, curren_state_margin)
+        return clip_bounding_box(min_x, max_x, min_y, max_y, self.obs_map.shape)
+
     def predict(self, state:SimState, dt):
         target_ind, _, closest_index = self.search_local_goal_index(state)
         local_goal = [self.trajectory.cx[target_ind], self.trajectory.cy[target_ind]]
-        state.mpc_goal = local_goal
-        local_goal_pixel = self.converter.meter2pixel(local_goal)
-        #return delta, target_ind, closest_index
+        state.mpc_local_goal = local_goal
+        state.mpc_local_goal_pixel = self.converter.meter2pixel(local_goal)
+        state.mpc_bbox = self.calc_search_area(state)
 
 
 class CombinedPlanner(object):
@@ -88,9 +96,11 @@ class CombinedPlanner(object):
         self.target_path_coords.append([self.trajectory.cx[target_ind], self.trajectory.cy[target_ind]])
         self.closest_path_coords.append([self.trajectory.cx[0], self.trajectory.cy[0]])
 
+        state_idx = 0
         while T >= self.clock and self.lastIndex > target_ind:
             cur_state = copy.copy(cur_state)
-            cur_state.mpc_goal = None
+            cur_state.reset_mpc_related()
+            state_idx +=1
 
             if self.lp.local_obs_detected(cur_state, cone_radius=SENSE_CONE_RADIUS, cone_fov=SENSE_CONE_ANGLE):
                 self.mpc_mode = True
