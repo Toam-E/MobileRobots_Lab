@@ -121,7 +121,7 @@ class PurePursuitController(object):
         car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
         # check if cone is in collision
         cone_points = [list(car_cone_point) for car_cone_point in zip(car_cone_xs.flatten(), car_cone_ys.flatten())]
-        min_x, min_y, max_x, max_y = calculate_bounding_box(cone_points)
+        min_x, min_y, max_x, max_y = polygon_calculate_bounding_box(cone_points)
         min_x, min_y, max_x, max_y = clip_bounding_box(min_x, min_y, max_x, max_y, self.map.shape)
         roi = extract_roi(self.map, min_x, min_y, max_x, max_y)
         adjusted_polygon = adjust_polygon_to_roi(cone_points, min_x, min_y)

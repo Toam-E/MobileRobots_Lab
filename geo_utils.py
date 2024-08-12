@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 
-def calculate_bounding_box(polygon):
+def polygon_calculate_bounding_box(polygon):
     """
     Calculate the bounding box of a polygon.
     
@@ -12,6 +12,29 @@ def calculate_bounding_box(polygon):
     min_x, min_y = np.min(polygon, axis=0)
     max_x, max_y = np.max(polygon, axis=0)
     return min_x, min_y, max_x, max_y
+
+import numpy as np
+
+def calculate_bounding_box(start, goal, margin):
+    """
+    Calculate the bounding box that includes the start location, goal location,
+    and a margin around the start location.
+
+    Parameters:
+    - start: tuple of (x, y) coordinates for the start location.
+    - goal: tuple of (x, y) coordinates for the goal location.
+    - margin: integer, margin in pixels around the start location.
+
+    Returns:
+    - bbox: tuple of (min_x, max_x, min_y, max_y) defining the bounding box.
+    """
+    # Calculate the bounding box with margin around the start location
+    min_x = min(start[0] - margin, goal[0])
+    max_x = max(start[0] + margin, goal[0])
+    min_y = min(start[1] - margin, goal[1])
+    max_y = max(start[1] + margin, goal[1])
+    
+    return min_x, max_x, min_y, max_y
 
 
 def clip_bounding_box(min_x, min_y, max_x, max_y, image_shape):
