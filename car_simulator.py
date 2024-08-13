@@ -119,6 +119,7 @@ class Simulator(object):
         states_obs_ahead = [ state.obs_ahead for state in states]
         states_mpc_local_goals = [ state.mpc_local_goal_pixel for state in states]
         states_mpc_bbox = [ state.mpc_bbox for state in states]
+        states_mpc_krrt_paths = [ state.krrt_path for state in states]
 
         num_of_states = len(states) 
         for i in range(num_of_states):
@@ -140,6 +141,11 @@ class Simulator(object):
             if trajectory is not None:
                 plt.plot(trajectory.cx, trajectory.cy, label="trajectory", linewidth=2, color='cyan')
             plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='green')
+
+            if states_mpc_krrt_paths[i] is not None:
+                krrt_path_x = [ elem[0] for elem in states_mpc_krrt_paths[i]]
+                krrt_path_y = [ elem[1] for elem in states_mpc_krrt_paths[i]]
+                plt.plot(krrt_path_x, krrt_path_y, label="krrt", linewidth=1, color='red')
             #circle = patches.Circle((states.x[i], states.y[i]), lidar_range, edgecolor='blue', facecolor='none', linewidth=1)
             #ax.add_patch(circle)
 

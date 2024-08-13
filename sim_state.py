@@ -17,11 +17,13 @@ class SimState(State):
         self.mpc_local_goal = None
         self.mpc_local_goal_pixel = None
         self.mpc_bbox = None
+        self.krrt_path = None
 
     def reset_mpc_related(self):
         self.mpc_local_goal = None
         self.mpc_local_goal_pixel = None
         self.mpc_bbox = None
+        self.krrt_path = None
 
 
 class SimStatesContainer(object):
@@ -56,6 +58,7 @@ class SimStatesContainer(object):
             state_pixel.obs_ahead = state.obs_ahead
             state_pixel.mpc_local_goal_pixel = state.mpc_local_goal_pixel
             state_pixel.mpc_bbox = state.mpc_bbox
+            state_pixel.krrt_path = state.krrt_path
             states.append(state_pixel)
         return states
     

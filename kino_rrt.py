@@ -5,8 +5,7 @@ from cspace import CSpace
 from odom import Odom
 
 class KINORRT(object):
-    def __init__(self, env_map, max_step_size = 0.5, max_itr=5000, p_bias = 0.05, converter: CSpace =None ):
-        self.max_step_size = max_step_size
+    def __init__(self, env_map, max_itr=5000, p_bias = 0.05, converter: CSpace =None, goal_radius=4 ):
         self.max_itr = max_itr
         self.p_bias = p_bias
         self.tree = Tree()
@@ -15,7 +14,10 @@ class KINORRT(object):
         self.env_yaw_range = 2*np.pi
         self.converter = converter
         self.ackerman = Odom(converter)
-        self.goal_radius = 4
+        self.goal_radius = goal_radius
+
+    def reset(self):
+        self.tree = Tree()
 
     def find_path(self, start, goal):
         itr = 0
