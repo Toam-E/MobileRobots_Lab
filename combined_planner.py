@@ -48,7 +48,8 @@ class CombinedPlanner(object):
             if self.mpc_mode:
                 # TODO: once finalized MPC w/ KRRT imp inside, we will replace the PP w/ it.
                 # for now, we just want to statistics and plots over what it does
-                delta, target_ind, closest_index = self.lp.pure_pursuit_steer_control(cur_state, self.trajectory, DELTA_T)
+                delta, target_ind, closest_index =\
+                    self.lp.pure_pursuit_steer_control(cur_state, self.trajectory, DELTA_T)
                 if self.mpc_curr_iteration < MPC_ITEREATIONS:
                     self.mpc.predict(cur_state, DELTA_T)
                     self.mpc_curr_iteration += 1

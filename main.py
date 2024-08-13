@@ -30,7 +30,7 @@ def main():
     if RUN_KRRT:
         cost = None
         while cost is None:
-            kinorrt_planner = KINORRT(env_map=inflated_map, max_step_size=20, max_itr=10000, p_bias=0.05,converter=converter )
+            kinorrt_planner = KINORRT(env_map=inflated_map, max_itr=10000, p_bias=0.05, converter=converter)
             path, _, cost = kinorrt_planner.find_path(start_pixel, goal_pixel)
             print(f'cost: {cost}')
             if cost != None:

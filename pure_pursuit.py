@@ -125,9 +125,8 @@ class PurePursuitController(object):
         min_x, min_y, max_x, max_y = clip_bounding_box(min_x, min_y, max_x, max_y, self.map.shape)
         roi = extract_roi(self.map, min_x, min_y, max_x, max_y)
         adjusted_polygon = adjust_polygon_to_roi(cone_points, min_x, min_y)
-        intersects = check_polygon_intersection(roi, adjusted_polygon)
-        state.obs_ahead = intersects
-        return intersects
+        state.obs_ahead = check_polygon_intersection(roi, adjusted_polygon)
+        return state.obs_ahead
 
 def plot_error(closest_path_coords, states:SimStatesContainer, trajectory:Trajectory):
     fig = plt.figure()
