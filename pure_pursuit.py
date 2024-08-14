@@ -3,11 +3,7 @@ import math
 from trajectory import Trajectory
 import matplotlib.pyplot as plt
 from car_simulator import SimState, SimStatesContainer
-from utils import get_normalized_angle
-from kino_rrt import KINORRT
 from cspace import CSpace
-from geo_utils import *
-
 
 
 class PurePursuitController(object):
@@ -104,29 +100,6 @@ class PurePursuitController(object):
         '''
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
-
-    def local_obs_detected(self, state: SimState, cone_radius = 15, cone_fov=np.pi/3):
-        state_meter_list = [state.x, state.y, state.yaw]
-        state_pixel = self.converter.meter2pixel(state_meter_list)
-        cone_origin_x = state_pixel[0]
-        cone_origin_y = state_pixel[1]
-        cone_origin_yaw = state_pixel[2]
-        fov_angles = np.linspace(start=cone_fov/2, stop=-cone_fov/2, num=cone_radius)
-        tile_yaw = np.tile(cone_origin_yaw, fov_angles.size)
-        fov_angles = np.expand_dims(tile_yaw + fov_angles, axis=0)
-        car_angles = np.apply_along_axis(get_normalized_angle, 0, fov_angles)
-        car_cone_xs = cone_origin_x + cone_radius * np.cos(car_angles)
-        car_cone_ys = cone_origin_y + cone_radius * np.sin(car_angles)
-        car_cone_xs = np.append(np.insert(car_cone_xs, 0, cone_origin_x), cone_origin_x)
-        car_cone_ys = np.append(np.insert(car_cone_ys, 0, cone_origin_y), cone_origin_y)
-        # check if cone is in collision
-        cone_points = [list(car_cone_point) for car_cone_point in zip(car_cone_xs.flatten(), car_cone_ys.flatten())]
-        min_x, min_y, max_x, max_y = polygon_calculate_bounding_box(cone_points)
-        min_x, min_y, max_x, max_y = clip_bounding_box(min_x, min_y, max_x, max_y, self.map.shape)
-        roi = extract_roi(self.map, min_x, min_y, max_x, max_y)
-        adjusted_polygon = adjust_polygon_to_roi(cone_points, min_x, min_y)
-        state.obs_ahead = check_polygon_intersection(roi, adjusted_polygon)
-        return state.obs_ahead
 
 def plot_error(closest_path_coords, states:SimStatesContainer, trajectory:Trajectory):
     fig = plt.figure()

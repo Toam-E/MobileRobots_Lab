@@ -1,9 +1,11 @@
 import car_consts
 import numpy as np
 
+DEBUG_ENABLE = False
+
 #  hyper-parameters
 LF_K = 0.05  # look forward gain
-LFC = 1.2  # [m] look-ahead distance
+LFC = 1.0  # [m] look-ahead distance
 V_KP = 1.0  # speed proportional gain
 DELTA_T = 0.1  # [s] time tick
 TARGETED_SPEED = 1.0  # [m/s]
@@ -14,9 +16,10 @@ MAX_DSTEER = car_consts.max_dt_steering_angle  # maximum steering speed [rad/s]
 MAX_SPEED = car_consts.max_linear_velocity  # maximum speed [m/s]
 MIN_SPEED = car_consts.min_linear_velocity  # minimum speed [m/s]
 MAX_ACCEL = 1.0  # maximum accel [m/ss]
-SENSE_CONE_RADIUS = 20
-SENSE_CONE_ANGLE = np.pi/4
+SENSE_CONE_RADIUS = 30
+SENSE_CONE_ANGLE = np.pi/5
 
+MPC_ENABLE = True
 MPC_KRRT_DEPTH = 3
 MPC_MAX_SEARCH_ITERATIONS_PER_KRRT = 900
 MPC_NUM_OF_PATHS_TO_CMP = 2

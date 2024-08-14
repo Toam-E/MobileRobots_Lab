@@ -38,7 +38,7 @@ class ModelPredictiveController(object):
         ind = self.old_nearest_point_index
 
         # look for the L point
-        while (ind+1) < len(cx):
+        while ((ind+1) < len(cx)) and ((ind - self.old_nearest_point_index) < 30):
             dist = self.calc_distance(state.rear_x, state.rear_y, cx[ind], cy[ind])
             if dist >= self.lf:
                 break
@@ -64,33 +64,55 @@ class ModelPredictiveController(object):
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
     def calc_search_area(self, local_start, local_goal, curren_state_margin=10):
-        min_x, max_x, min_y, max_y = calculate_bounding_box(local_start, local_goal, curren_state_margin)
-        return clip_bounding_box(min_x, max_x, min_y, max_y, self.obs_map.shape)
+        min_x, min_y, max_x, max_y = calculate_bounding_box(local_start, local_goal, curren_state_margin)
+        return clip_bounding_box(min_x, min_y, max_x, max_y, self.obs_map.shape)
     
     def is_config_in_collision(self, conf):
         pixel = self.converter.meter2pixel(conf)
         return self.obs_map[pixel[1], pixel[0]] != 0
 
     def convert_local_path_to_global_map(self, x_min, y_min, path):
-        new_path = [ [elem[0] + x_min, elem[1] + y_min] for elem in path]
+        new_path = [ [elem[0] + x_min, elem[1] + y_min, elem[2]] for elem in path]
         return new_path
+    
+    def steer_control(self, state: SimState,  dt):
+
+        next_state_location = state.krrt_path[1]
+        next_state = self.converter.pixel2meter(next_state_location)
+        # calculate alpha angle based on L line relative to car coordinate position
+        # as if it was paraller to world X axis
+        alpha = math.atan2(next_state[1] - state.rear_y, next_state[0] - state.rear_x)
+        # reduce the current theta to get the real world alpha angle
+        alpha -=  state.yaw
+
+        L = self.calc_distance(state.rear_x, state.rear_y, next_state[0], next_state[1])
+        # use the formula that delta = arctan(2 * WB * sin(alpha) / L)
+        theta = math.atan2(2.0 * WB * math.sin(alpha) , L)
+
+        max_change_in_theta = MAX_DSTEER * dt
+        theta = np.clip(theta, state.predelta - max_change_in_theta, state.predelta + max_change_in_theta)
+        theta = np.clip(theta, -MAX_STEER, MAX_STEER)
+
+        return theta
+
 
     def predict(self, state : SimState, dt):
-        list_of_state_pixel = self.converter.meter2pixel([state.x, state.y, state.yaw])
-        local_start_pixel = [list_of_state_pixel[0], list_of_state_pixel[1]]
-        target_ind, _, _ = self.search_local_goal_index(state)
-        local_goal = [self.trajectory.cx[target_ind], self.trajectory.cy[target_ind]]
+        local_start_pixel = self.converter.meter2pixel([state.x, state.y, state.yaw])
+        krrt_target_ind, _, closest_index = self.search_local_goal_index(state)
+        local_goal = [self.trajectory.cx[krrt_target_ind], self.trajectory.cy[krrt_target_ind]]
         state.mpc_local_goal = local_goal
         state.mpc_local_goal_pixel = self.converter.meter2pixel(local_goal)
         state.mpc_bbox = self.calc_search_area(local_start_pixel, state.mpc_local_goal_pixel)
-        x_min, x_max, y_min, y_max= state.mpc_bbox
+        x_min, y_min, x_max, y_max= state.mpc_bbox
+        assert(x_max - x_min >= 10)
+        assert(y_max - y_min >= 10)
         cropped_area = self.obs_map[y_min:y_max, x_min:x_max]
-        new_start = [local_start_pixel[0] - x_min, local_start_pixel[1] - y_min]
-        new_goal = [state.mpc_local_goal_pixel[0] - x_min, state.mpc_local_goal_pixel[1] - y_min]
+        new_start = [local_start_pixel[0] - x_min, local_start_pixel[1] - y_min, local_start_pixel[2]]
+        new_goal = [state.mpc_local_goal_pixel[0] - x_min, state.mpc_local_goal_pixel[1] - y_min, 0]
 
         if self.is_config_in_collision([state.x, state.y]):
-            print("local start state is already in collision, no KRRT done")
-            return
+            print("local start state is already in collision, no KRRT done", end=" ")
+            return None, None, None
 
         min_cost_path = None
         krrt = KINORRT(cropped_area, max_itr=self.max_search_iterations_per_krrt,\
@@ -108,9 +130,11 @@ class ModelPredictiveController(object):
             min_cost_index = krrt_costs.index(min(krrt_costs))
             min_cost_path = krrt_paths[min_cost_index]
             state.krrt_path = self.convert_local_path_to_global_map(x_min, y_min, min_cost_path)
-            print("local plan found")
+            if DEBUG_ENABLE: print("local plan found", end=" ")
+            delta = self.steer_control(state, dt)
+            return delta, krrt_target_ind, closest_index
         else:
-            print("No local plan found")
-        return min_cost_path
+            if DEBUG_ENABLE: print("No local plan found", end=" ")
+            return None, None, None
 
 
