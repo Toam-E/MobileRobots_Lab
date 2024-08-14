@@ -85,8 +85,9 @@ class ModelPredictiveController(object):
         # reduce the current theta to get the real world alpha angle
         alpha -=  state.yaw
 
+        L = self.calc_distance(state.rear_x, state.rear_y, next_state[0], next_state[1])
         # use the formula that delta = arctan(2 * WB * sin(alpha) / L)
-        theta = math.atan2(2.0 * WB * math.sin(alpha) , self.lf)
+        theta = math.atan2(2.0 * WB * math.sin(alpha) , L)
 
         max_change_in_theta = MAX_DSTEER * dt
         theta = np.clip(theta, state.predelta - max_change_in_theta, state.predelta + max_change_in_theta)
@@ -103,7 +104,6 @@ class ModelPredictiveController(object):
         state.mpc_local_goal_pixel = self.converter.meter2pixel(local_goal)
         state.mpc_bbox = self.calc_search_area(local_start_pixel, state.mpc_local_goal_pixel)
         x_min, y_min, x_max, y_max= state.mpc_bbox
-        print(f"state.mpc_bbox {state.mpc_bbox}")
         assert(x_max - x_min >= 10)
         assert(y_max - y_min >= 10)
         cropped_area = self.obs_map[y_min:y_max, x_min:x_max]
@@ -130,11 +130,11 @@ class ModelPredictiveController(object):
             min_cost_index = krrt_costs.index(min(krrt_costs))
             min_cost_path = krrt_paths[min_cost_index]
             state.krrt_path = self.convert_local_path_to_global_map(x_min, y_min, min_cost_path)
-            print("local plan found", end=" ")
+            if DEBUG_ENABLE: print("local plan found", end=" ")
             delta = self.steer_control(state, dt)
             return delta, krrt_target_ind, closest_index
         else:
-            print("No local plan found", end=" ")
+            if DEBUG_ENABLE: print("No local plan found", end=" ")
             return None, None, None
 
 
