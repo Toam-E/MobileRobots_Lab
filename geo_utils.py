@@ -29,12 +29,12 @@ def calculate_bounding_box(start, goal, margin):
     - bbox: tuple of (min_x, max_x, min_y, max_y) defining the bounding box.
     """
     # Calculate the bounding box with margin around the start location
-    min_x = min(start[0] - margin, goal[0])
-    max_x = max(start[0] + margin, goal[0])
-    min_y = min(start[1] - margin, goal[1])
-    max_y = max(start[1] + margin, goal[1])
+    min_x = min(start[0] - margin, goal[0] - margin)
+    max_x = max(start[0] + margin, goal[0] + margin)
+    min_y = min(start[1] - margin, goal[1] - margin)
+    max_y = max(start[1] + margin, goal[1] + margin)
     
-    return min_x, max_x, min_y, max_y
+    return min_x, min_y, max_x, max_y
 
 
 def clip_bounding_box(min_x, min_y, max_x, max_y, image_shape):
@@ -50,8 +50,8 @@ def clip_bounding_box(min_x, min_y, max_x, max_y, image_shape):
     """
     min_x = max(0, min_x)
     min_y = max(0, min_y)
-    max_x = min(image_shape[1], max_x)
-    max_y = min(image_shape[0], max_y)
+    max_x = min(image_shape[1]-1, max_x)
+    max_y = min(image_shape[0]-1, max_y)
     return min_x, min_y, max_x, max_y
 
 

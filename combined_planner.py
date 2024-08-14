@@ -38,7 +38,7 @@ class CombinedPlanner(object):
             cur_state = copy.copy(cur_state)
             cur_state.reset_mpc_related()
             state_idx +=1
-
+            print(f"idx={state_idx}",end=" ")
             if self.lp.local_obs_detected(cur_state, cone_radius=SENSE_CONE_RADIUS, cone_fov=SENSE_CONE_ANGLE):
                 self.mpc_mode = True
                 self.mpc_curr_iteration = 0
@@ -46,17 +46,19 @@ class CombinedPlanner(object):
             cur_state.v = self.lp.proportional_control_acceleration(TARGETED_SPEED, cur_state.v, DELTA_T)
 
             if self.mpc_mode:
+                delta, _, closest_index = self.mpc.predict(cur_state, DELTA_T)
                 # TODO: once finalized MPC w/ KRRT imp inside, we will replace the PP w/ it.
                 # for now, we just want to statistics and plots over what it does
-                delta, target_ind, closest_index =\
+                pp_delta, target_ind, closest_index =\
                     self.lp.pure_pursuit_steer_control(cur_state, self.trajectory, DELTA_T)
-                if self.mpc_curr_iteration < MPC_ITEREATIONS:
-                    self.mpc.predict(cur_state, DELTA_T)
+                if delta is None:
+                    delta = pp_delta
+                    
+                if (self.mpc_curr_iteration + 1) < MPC_ITEREATIONS:
                     self.mpc_curr_iteration += 1
                 else:
                     self.mpc_mode = False
                     self.mpc_curr_iteration = 0
-                #delta, target_ind, closest_index = self.mpc.predict(cur_state, DELTA_T)
             else:
                 delta, target_ind, closest_index = self.lp.pure_pursuit_steer_control(cur_state, self.trajectory, DELTA_T)
 
@@ -68,4 +70,5 @@ class CombinedPlanner(object):
             self.states.append(cur_state)
             self.closest_path_coords.append([self.trajectory.cx[closest_index], self.trajectory.cy[closest_index]])
             self.target_path_coords.append([self.trajectory.cx[target_ind], self.trajectory.cy[target_ind]])
+            print("")
 

@@ -133,7 +133,7 @@ class Simulator(object):
             plt.scatter(goal[0],goal[1], s=100, c='r')
 
             if states_mpc_bbox[i] is not None:
-                x_min, x_max, y_min, y_max = states_mpc_bbox[i]
+                x_min, y_min, x_max, y_max = states_mpc_bbox[i]
                 x_coords = [x_min, x_max, x_max, x_min]
                 y_coords = [y_min, y_min, y_max, y_max]
                 plt.fill(x_coords, y_coords, color='orange', alpha=0.5)
@@ -196,15 +196,3 @@ class Simulator(object):
         plan_time = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
         imageio.mimwrite(f'plan_{plan_time}.gif', sim_plan, 'GIF', fps=fps, subrectangles=True)
 
-    def save_simulation(self):
-        pass
-    
-
-
-"""
-def resize_image(image, new_width, new_height):
-    pil_image = Image.fromarray(image)
-    resized_pil_image = pil_image.resize((new_width, new_height), Image.ANTIALIAS)
-    resized_image = np.array(resized_pil_image)
-    return resized_image
-"""
