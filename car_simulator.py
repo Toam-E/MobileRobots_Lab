@@ -3,6 +3,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.colors import ListedColormap, BoundaryNorm
 from sim_state import SimState, SimStatesContainer
 from consts import *
 from trajectory import Trajectory
@@ -121,13 +122,20 @@ class Simulator(object):
         states_mpc_bbox = [ state.mpc_bbox for state in states]
         states_mpc_krrt_paths = [ state.krrt_path for state in states]
 
+        cmap = ListedColormap(['black', 'yellow', 'blue'])
+        bounds = [0, 50, 150, 255]
+        norm = BoundaryNorm(bounds, cmap.N)
+
         num_of_states = len(states) 
         for i in range(num_of_states):
             print(f"i={i+1}/{num_of_states}")
 
             fig, ax = plt.subplots(dpi=150)  # Create a new figure and axis
+            #fig.patch.set_facecolor('gray')  # Set background color to gray
+            #ax.set_facecolor('gray')  # Set the axes background color to gray
             ax.axis('off')
-            ax.imshow(self.map, origin="lower")
+            #ax.imshow(self.map, origin="lower") #cmap=cmap, norm=norm, origin="lower")
+            ax.imshow(self.map, cmap=cmap, norm=norm, origin="lower")
 
             plt.scatter(start[0], start[1], s=100, c='g')
             plt.scatter(goal[0],goal[1], s=100, c='r')
@@ -151,7 +159,7 @@ class Simulator(object):
 
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if target_path_coords is not None:
-                plt.scatter(target_path_coords[i][0], target_path_coords[i][1], c='b')
+                plt.scatter(target_path_coords[i][0], target_path_coords[i][1], c='w')
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
 
