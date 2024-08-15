@@ -63,7 +63,7 @@ class ModelPredictiveController(object):
     def calc_distance(self, rear_x, rear_y, point_x, point_y):
         return math.sqrt((rear_x - point_x)**2 + (rear_y - point_y)**2)
 
-    def calc_search_area(self, local_start, local_goal, curren_state_margin=10):
+    def calc_search_area(self, local_start, local_goal, curren_state_margin=MPC_SEARCH_AREA_START_AND_GOAL_MARGINS):
         min_x, min_y, max_x, max_y = calculate_bounding_box(local_start, local_goal, curren_state_margin)
         return clip_bounding_box(min_x, min_y, max_x, max_y, self.obs_map.shape)
     

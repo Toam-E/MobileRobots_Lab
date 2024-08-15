@@ -35,11 +35,11 @@ def main():
             print(f'cost: {cost}')
             if cost != None:
                 path_meter = np.array(converter.pathindex2pathmeter(path))
-                np.save(f'krrt_path_pixels.npy', path)
-                np.save(f'krrt_path_meters.npy', path_meter)
+                np.save(f'krrt_path_pixels_2.npy', path)
+                np.save(f'krrt_path_meters_2.npy', path_meter)
     else:
-        path = np.load('krrt_path_pixels.npy')
-        path_meter = np.load('krrt_path_meters.npy')
+        path = np.load('krrt_path_pixels_2.npy')
+        path_meter = np.load('krrt_path_meters_2.npy')
 
     if RUN_ADD_OBS:
         # add on path new obstacles
