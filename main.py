@@ -7,10 +7,6 @@ from car_simulator import SimStatesContainer, Simulator
 from utils import inflate, add_new_obstacles
 from combined_planner import CombinedPlanner
 
-COMBINED_CONT = False
-if COMBINED_CONT:
-    from combined_controller import CombinedController
-
 # run params
 RUN_KRRT = False
 RUN_ADD_OBS = True
@@ -56,13 +52,9 @@ def main():
     sim_states_container = SimStatesContainer()
 
     if RUN_COMBINED_PLANNER:
-        if COMBINED_CONT:
-            combined_controller = CombinedController(path_meter, new_obs_map, converter)
-            combined_controller.find_path(goal_pixel)
-        else:
-            combined_controller = CombinedPlanner(new_obs_map, \
-                trajectory, converter, simulator, sim_states_container)
-            combined_controller.find_path()
+        combined_controller = CombinedPlanner(new_obs_map, \
+            trajectory, converter, simulator, sim_states_container)
+        combined_controller.find_path()
 
     if RUN_ANIMATION:
         states_pixels = sim_states_container.get_states_in_pixels(converter)
