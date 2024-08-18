@@ -20,7 +20,7 @@ In the examples below we can see the difference in real time obstacles avoidance
 ## Model Predicitive Control + Pure Pursuit (MPC + PP) example
 ![MPC (Model Predictive Control + Pure Pursuit](src/mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
 
-Legend:  
+### Legend:  
 balck - free space  
 yellow - obstacles (originally when global planning was done)  
 blue - added real time obstacles over the planned trajectory  
