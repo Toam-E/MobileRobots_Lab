@@ -202,5 +202,5 @@ class Simulator(object):
 
         # store gif
         plan_time = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        imageio.mimwrite(f'plan_{plan_time}.gif', sim_plan, 'GIF', fps=fps, subrectangles=True)
+        imageio.mimwrite(f'src/plan_{plan_time}.gif', sim_plan, 'GIF', fps=fps, subrectangles=True)
 
