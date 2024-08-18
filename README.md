@@ -1,3 +1,5 @@
+![MPC (Model Predictive Control + Pure Pursuit](src/mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
+
 # ECE 046214 Mobile Robots Project
 
 ## Acronyms 
@@ -15,11 +17,6 @@ We try to solve the obstacle/crowd avoidance problem by incorporating MPC (Model
 
 In the examples below we can see the difference in real time obstacles avoidance.  
 
-## Pure Pursuit only example
-![Pure Pursuit only](src/pp_only_scaled_down_plan_18-08-2024_01-45-10.gif)
-## Model Predicitive Control + Pure Pursuit (MPC + PP) example
-![MPC (Model Predictive Control + Pure Pursuit](src/mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
-
 ### Legend:  
 balck - free space  
 yellow - obstacles (originally when global planning was done)  
@@ -33,3 +30,9 @@ red line - the selected local KinoRRT path found when we search locally
 light green ball - the PP look ahead point on the originally planned trajectory  
 big green ball - start point  
 big red ball - goal point  
+
+## Pure Pursuit only example
+![Pure Pursuit only](src/pp_only_scaled_down_plan_18-08-2024_01-45-10.gif)
+## Model Predicitive Control + Pure Pursuit (MPC + PP) example
+![MPC (Model Predictive Control + Pure Pursuit](src/mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
+
