@@ -15,7 +15,7 @@ RUN_ANIMATION = True
 
 def main():
 
-    map_original = np.array(np.load('maze_test.npy'), dtype=int)
+    map_original = np.array(np.load('src/maze_test.npy'), dtype=int)
     inflated_map = inflate(map_original, INFLATION)
     converter = CSpace(RESOLUTION, origin_x=-4.73, origin_y=-5.66, map_shape=map_original.shape)
     start = [0.0,0.0]
@@ -31,11 +31,11 @@ def main():
             print(f'cost: {cost}')
             if cost != None:
                 path_meter = np.array(converter.pathindex2pathmeter(path))
-                np.save(f'krrt_path_pixels_2.npy', path)
-                np.save(f'krrt_path_meters_2.npy', path_meter)
+                np.save(f'src/krrt_path_pixels_2.npy', path)
+                np.save(f'src/krrt_path_meters_2.npy', path_meter)
     else:
-        path = np.load('krrt_path_pixels_2.npy')
-        path_meter = np.load('krrt_path_meters_2.npy')
+        path = np.load('src/krrt_path_pixels_2.npy')
+        path_meter = np.load('src/krrt_path_meters_2.npy')
 
     if RUN_ADD_OBS:
         # add on path new obstacles
