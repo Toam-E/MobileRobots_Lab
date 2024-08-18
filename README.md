@@ -18,11 +18,11 @@ We try to solve the obstacle/crowd avoidance problem by incorporating MPC (Model
 In the examples below we can see the difference in real time obstacles avoidance.  
 
 ### Legend:  
-balck - free space  
+white - free space  
 blue - obstacles (originally when global planning was done)  
-yellow - added real time obstacles over the planned trajectory  
+black - added real time obstacles over the planned trajectory  
 cyan line - planned trajectory (by some planning algorithm like PRM or RRT. We used Kino RRT)  
-light purple line - the actual trajectory (when we use PP only or MPC+PP)  
+green line - the actual trajectory (when we use PP only or MPC+PP)  
 purple arc - the lidar like sensor model when it doesn't hit an obstacle  
 red arc - the lidar like sensor model when it does hit an obstacle  
 orange rectangle - local pllaner search area when we look for a local alternative to bypass the obstacle in our way using local start and goal and running  

@@ -122,7 +122,7 @@ class Simulator(object):
         states_mpc_bbox = [ state.mpc_bbox for state in states]
         states_mpc_krrt_paths = [ state.krrt_path for state in states]
 
-        cmap = ListedColormap(['black', 'blue', 'yellow'])
+        cmap = ListedColormap(['white', 'blue', 'black'])
         bounds = [0, 50, 150, 255]
         norm = BoundaryNorm(bounds, cmap.N)
 
@@ -148,7 +148,7 @@ class Simulator(object):
 
             if trajectory is not None:
                 plt.plot(trajectory.cx, trajectory.cy, label="trajectory", linewidth=2, color='cyan')
-            plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='#D8BFD8')  # Light purple (thistle)
+            plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='green')#color='#D8BFD8' Light purple (thistle)
 
             if states_mpc_krrt_paths[i] is not None:
                 krrt_path_x = [ elem[0] for elem in states_mpc_krrt_paths[i]]
