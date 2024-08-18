@@ -19,8 +19,8 @@ In the examples below we can see the difference in real time obstacles avoidance
 
 ### Legend:  
 balck - free space  
-yellow - obstacles (originally when global planning was done)  
-blue - added real time obstacles over the planned trajectory  
+blue - obstacles (originally when global planning was done)  
+yellow - added real time obstacles over the planned trajectory  
 cyan line - planned trajectory (by some planning algorithm like PRM or RRT. We used Kino RRT)  
 light purple line - the actual trajectory (when we use PP only or MPC+PP)  
 purple arc - the lidar like sensor model when it doesn't hit an obstacle  

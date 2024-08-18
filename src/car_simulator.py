@@ -122,7 +122,7 @@ class Simulator(object):
         states_mpc_bbox = [ state.mpc_bbox for state in states]
         states_mpc_krrt_paths = [ state.krrt_path for state in states]
 
-        cmap = ListedColormap(['black', 'yellow', 'blue'])
+        cmap = ListedColormap(['black', 'blue', 'yellow'])
         bounds = [0, 50, 150, 255]
         norm = BoundaryNorm(bounds, cmap.N)
 
