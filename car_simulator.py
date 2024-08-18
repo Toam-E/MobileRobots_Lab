@@ -130,7 +130,7 @@ class Simulator(object):
         for i in range(num_of_states):
             print(f"i={i+1}/{num_of_states}")
 
-            fig, ax = plt.subplots(dpi=150)  # Create a new figure and axis
+            fig, ax = plt.subplots(dpi=100)  # Create a new figure and axis
             #fig.patch.set_facecolor('gray')  # Set background color to gray
             #ax.set_facecolor('gray')  # Set the axes background color to gray
             ax.axis('off')
@@ -148,7 +148,7 @@ class Simulator(object):
 
             if trajectory is not None:
                 plt.plot(trajectory.cx, trajectory.cy, label="trajectory", linewidth=2, color='cyan')
-            plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='green')
+            plt.plot(states_x[:i], states_y[:i], label="actual", linewidth=2, color='#D8BFD8')  # Light purple (thistle)
 
             if states_mpc_krrt_paths[i] is not None:
                 krrt_path_x = [ elem[0] for elem in states_mpc_krrt_paths[i]]
@@ -159,7 +159,7 @@ class Simulator(object):
 
             #self.plot_car(states.x[i], states.y[i], states.yaw[i], steer=states.d[i])
             if target_path_coords is not None:
-                plt.scatter(target_path_coords[i][0], target_path_coords[i][1], c='w')
+                plt.scatter(target_path_coords[i][0], target_path_coords[i][1], c='green')
             if closest_path_coords is not None:
                 plt.scatter(closest_path_coords[i][0], closest_path_coords[i][1])
 
