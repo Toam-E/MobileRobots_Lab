@@ -30,6 +30,6 @@ big green ball - start point
 big red ball - goal point  
 
 ## Pure Pursuit only example
-![Pure Pursuit only](mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
+![Pure Pursuit only](pp_only_scaled_down_plan_18-08-2024_01-45-10.gif)
 ## Model Predicitive Control + Pure Pursuit (MPC + PP) example
 ![MPC (Model Predictive Control + Pure Pursuit](mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
