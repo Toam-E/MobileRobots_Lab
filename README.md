@@ -6,7 +6,7 @@
 PP - Pure Pursuit  
 MPC - Model Predictive Control  
 RRT - Rapidly-exploring Random Tree  
-Kino RRT - dynamic version of RRT  
+KRRT - dynamic version of RRT. stands for Kino RRT
 
 
 ## Problem description
@@ -17,7 +17,12 @@ We try to solve the obstacle/crowd avoidance problem by incorporating MPC (Model
 
 In the examples below we can see the difference in real time obstacles avoidance.  
 
-### Legend:  
+## Pure Pursuit only example
+![Pure Pursuit only](src/pp_only_scaled_down_plan_18-08-2024_01-45-10.gif)
+## Model Predicitive Control + Pure Pursuit (MPC + PP) example
+![MPC (Model Predictive Control + Pure Pursuit](src/mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
+
+#### Legend:  
 white - free space  
 blue - obstacles (originally when global planning was done)  
 black - added real time obstacles over the planned trajectory  
@@ -31,8 +36,17 @@ light green ball - the PP look ahead point on the originally planned trajectory
 big green ball - start point  
 big red ball - goal point  
 
-## Pure Pursuit only example
-![Pure Pursuit only](src/pp_only_scaled_down_plan_18-08-2024_01-45-10.gif)
-## Model Predicitive Control + Pure Pursuit (MPC + PP) example
-![MPC (Model Predictive Control + Pure Pursuit](src/mpc_pp_scaled_down_plan_18-08-2024_01-40-54.gif)
+We can see that the PP controller doesn't avoid the new obstacles (in black) along the planned trajectory and just crashes into it.  
+On the other hand, the MPC is running local search for a new path that bypass the new obstacle in front of it.
+
+We simulate the Lidar beam by an arc that gives a future obstacle ahead of the robot. When there is no collision in the near future, a regular PP control is applied. otherwise, we start the MPC flow and we run it for several iterations even though we don't identify and obstacle ahead (hyper parameter).  
+
+## MPC + PP flow
+
+1. Define the local goal - it looks ahead as in PP but w/ different L constant and sets the local goal as a point along the planned trajectory but after the obstacle. If the obstacle is big and the goal is in collision, we continue and increase the goal index along the planned trajectory until we're out of collision. We also add some extra indexes (another hyper parameter to tune) after we are not in collision in order to have a feasilbe local goal.  
+2. Define the local start - the local start is our current location.  
+3. Calculate the local search rectangle - we define another parameter called margin in order to have some margins around the start and goal. We then calculate the bounding box of these 2 sqaures.  
+4. Run KinoRRT to find a local new path - run KRRT locally for several times (predefined hyper parameter to tune) and select the best one of them. The best currently stands for the shortest, but a more sophisticated cost functions can be applied. We also let each KRRT run for a predefined max amount of iterations (another hyper parameter) and it it doesn't find a path at all (from all tries) we don't use the search and continue as in PP controller.
+5. Select the first state along the path - we take the first state along the path, calculate the steering needed to it (as if it was the look ahead point) and apply that steering.
+6. We keep repeating the above until we're out of MPC mode.
 
